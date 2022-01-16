@@ -12,7 +12,7 @@ TEST_SRC := $(shell find $(TSTD) -type f -name *.c)
 INC := -I $(INCD)
 
 EXEC := hi
-TEST_EXEC := $(EXEC)_test
+TEST_EXEC := $(EXEC)_tests
 
 CFLAGS := -Wall -Werror
 DFLAGS := -g -DDEBUG
