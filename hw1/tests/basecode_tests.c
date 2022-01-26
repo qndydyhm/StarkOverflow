@@ -38,7 +38,7 @@ Test(basecode_suite, validargs_canonicalize_test) {
     int ret = validargs(argc, argv);
     int exp_ret = 0;
     int opt = global_options;
-    int exp_opt = CANONICALIZE_OPTION | 0x4;
+    int exp_opt = CANONICALIZE_OPTION;
     cr_assert_eq(ret, exp_ret, "Invalid return for validargs.  Got: %d | Expected: %d",
 		 ret, exp_ret);
     cr_assert_eq(opt, exp_opt, "Invalid options settings.  Got: 0x%x | Expected: 0x%x",
