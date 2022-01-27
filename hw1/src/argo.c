@@ -23,8 +23,8 @@
  * and a NULL pointer value is returned.
  *
  * @param f  Input stream from which JSON is to be read.
- * @return  Zero if the operation is completely successful,
- * nonzero if there is any error.
+ * @return  A valid pointer if the operation is completely successful,
+ * NULL if there is any error.
  */
 ARGO_VALUE *argo_read_value(FILE *f) {
     // TO BE IMPLEMENTED.
