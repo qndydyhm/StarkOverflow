@@ -78,13 +78,15 @@ int validargs(int argc, char **argv)
                         {
                             return -1;
                         }
-                        global_options = PRETTY_PRINT_OPTION;
                         if (argc == 3)
-                        {
+                        {    
+                            global_options = PRETTY_PRINT_OPTION;
+                            global_options += 4;
                             return 0;
                         }
                         else if (argc == 4)
                         {
+                            global_options = PRETTY_PRINT_OPTION;
                             int indent_value = 0;
                             arg = *(++ptr);
                             while (*arg != '\0')
