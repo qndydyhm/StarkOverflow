@@ -22,6 +22,7 @@
 
 int validargs(int argc, char **argv)
 {
+    global_options = 0;
     char **ptr = argv;
     ptr++;
     for (int i = 1; i < argc; i++, ptr++)
