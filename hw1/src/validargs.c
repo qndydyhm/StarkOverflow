@@ -4,6 +4,9 @@
 #include "global.h"
 #include "debug.h"
 
+int parse_arg(char *arg);
+int str2int(char *arg);
+
 /**
  * @brief Validates command line arguments passed to the program.
  * @details This function will validate all the arguments passed to the
@@ -23,104 +26,106 @@
 int validargs(int argc, char **argv)
 {
     global_options = 0;
+    int isValid = 0;
     char **ptr = argv;
-    ptr++;
-    for (int i = 1; i < argc; i++, ptr++)
+    switch (parse_arg(*(++ptr)))
     {
-        if (**ptr == '-')
+    case 8:
+        global_options = HELP_OPTION;
+        isValid = 1;
+        break;
+    case 4:
+        if (argc == 2)
         {
-            char *arg = *ptr;
-            arg++;
-            switch (*arg)
+            global_options = VALIDATE_OPTION;
+            isValid = 1;
+        }
+        else
+        {
+            if (parse_arg(*(++ptr)) == -1)
             {
-            case 'h':
-                if (i == 1 && *(++arg) == '\0')
-                {
-                    global_options = HELP_OPTION;
-                    return 0;
-                }
-                else
-                {
-                    return -1;
-                }
+                global_options = VALIDATE_OPTION;
+                isValid = 1;
+            }
+        }
+        break;
+    case 2:
+        if (argc == 2)
+        {
+            global_options = CANONICALIZE_OPTION;
+            isValid = 1;
+        }
+        else
+        {
+            switch (parse_arg(*(++ptr)))
+            {
+            case -1:
+                global_options = CANONICALIZE_OPTION;
+                isValid = 1;
                 break;
-            case 'v':
-                if (i == 1 && *(++arg) == '\0' && argc == 2)
-                {
-                    global_options = VALIDATE_OPTION;
-                    return 0;
-                }
-                else
-                {
-                    return -1;
-                }
-                break;
-            case 'c':
-                if (i == 1 && *(++arg) == '\0')
-                {
-                    if (argc == 2)
-                    {
-                        global_options = CANONICALIZE_OPTION;
-                        return 0;
-                    }
-                    else
-                    {
-                        ptr++;
-                        if (**ptr != '-')
-                        {
-                            return -1;
-                        }
-                        arg = *ptr;
-                        if (*(++arg) != 'p')
-                        {
-                            return -1;
-                        }
-                        if (*(++arg) != '\0')
-                        {
-                            return -1;
-                        }
-                        if (argc == 3)
-                        {    
-                            global_options = PRETTY_PRINT_OPTION;
-                            global_options += 4;
-                            return 0;
-                        }
-                        else if (argc == 4)
-                        {
-                            global_options = PRETTY_PRINT_OPTION;
-                            int indent_value = 0;
-                            arg = *(++ptr);
-                            while (*arg != '\0')
-                            {
-                                if (*arg <= '9' && *arg >= '0')
-                                {
-                                    indent_value = indent_value * 10 + (*arg - '0');
-                                    arg++;
-                                }
-                                else
-                                {
-                                    return 1;
-                                }
-                            }
-                            global_options += indent_value;
-                            return 0;
-                        }
-                        else
-                        {
-                            return -1;
-                        }
-                    }
-                }
-                else
-                {
-                    return -1;
-                }
+            case 1:
+                global_options = CANONICALIZE_OPTION + PRETTY_PRINT_OPTION + str2int(*(++ptr));
+                isValid = 1;
                 break;
             default:
-                return -1;
                 break;
             }
         }
+        break;
+    default:
+        break;
+    }
+    if (isValid)
+    {
+        return 0;
     }
     return -1;
+}
+
+int parse_arg(char *arg)
+{
+    int ans = -1;
+    if (*arg == '-')
+    {
+        char arg1 = *(++arg), arg2 = *(++arg);
+        if (arg2 == '\0')
+        {
+            if (arg1 == 'h')
+            {
+                ans = 8;
+            }
+            else if (arg1 == 'v')
+            {
+                ans = 4;
+            }
+            else if (arg1 == 'c')
+            {
+                ans = 2;
+            }
+            else if (arg1 == 'p')
+            {
+                ans = 1;
+            }
+        }
+    }
+    return ans;
+}
+
+int str2int(char *arg)
+{
+    int ans = 0;
+    while (*arg != '\0')
+    {
+        if (*arg <= '9' && *arg >= '0')
+        {
+            ans = ans * 10 + (*arg - '0');
+            arg++;
+        }
+        else
+        {
+            ans = 4;
+            break;
+        }
+    }
+    return ans;
 }
