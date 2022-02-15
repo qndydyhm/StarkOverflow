@@ -40,14 +40,6 @@ int validargs(int argc, char **argv)
             global_options = VALIDATE_OPTION;
             isValid = 1;
         }
-        else
-        {
-            if (parse_arg(*(++ptr)) == -1)
-            {
-                global_options = VALIDATE_OPTION;
-                isValid = 1;
-            }
-        }
         break;
     case 2:
         if (argc == 2)
@@ -57,17 +49,20 @@ int validargs(int argc, char **argv)
         }
         else
         {
-            switch (parse_arg(*(++ptr)))
+            if (parse_arg(*(++ptr)) == 1)
             {
-            case -1:
-                global_options = CANONICALIZE_OPTION;
+                int indented_value;
+                if (argc == 3) {
+                    indented_value = 4;
+                }
+                else {
+                    indented_value = str2int(*(++ptr));
+                }
+                if (indented_value == -1) {
+                    break;
+                }
+                global_options = CANONICALIZE_OPTION + PRETTY_PRINT_OPTION + indented_value;
                 isValid = 1;
-                break;
-            case 1:
-                global_options = CANONICALIZE_OPTION + PRETTY_PRINT_OPTION + str2int(*(++ptr));
-                isValid = 1;
-                break;
-            default:
                 break;
             }
         }
@@ -123,9 +118,14 @@ int str2int(char *arg)
         }
         else
         {
-            ans = 4;
+            ans = -1;
             break;
         }
     }
-    return ans;
+    if (ans < 256 && ans >= 0) {
+        return ans;
+    }
+    else {
+        return -1;
+    }
 }

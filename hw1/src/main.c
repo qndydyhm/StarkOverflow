@@ -23,6 +23,23 @@ int main(int argc, char **argv)
         USAGE(*argv, EXIT_FAILURE);
     if(global_options == HELP_OPTION)
         USAGE(*argv, EXIT_SUCCESS);
+    else if (global_options == VALIDATE_OPTION)
+    {
+        argo_read_value(stdin);
+        return EXIT_SUCCESS;
+    }
+    else if (global_options == CANONICALIZE_OPTION)
+    {
+        ARGO_VALUE *json = argo_read_value(stdin);
+        argo_write_value(json, stdout);
+        return EXIT_SUCCESS;
+    }
+    else if (global_options & PRETTY_PRINT_OPTION)
+    {
+        ARGO_VALUE *json = argo_read_value(stdin);
+        argo_write_value(json, stdout);
+        return EXIT_SUCCESS;
+    }
     // TO BE IMPLEMENTED
     return EXIT_FAILURE;
 }
