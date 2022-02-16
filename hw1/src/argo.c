@@ -5,6 +5,7 @@
 #include "global.h"
 #include "debug.h"
 
+// ARGO_VALUE *argo_read_value_helper(FILE *f, ARGO_VALUE *this);
 /**
  * @brief  Read JSON input from a specified input stream, parse it,
  * and return a data structure representing the corresponding value.
@@ -27,9 +28,34 @@
  * NULL if there is any error.
  */
 // ARGO_VALUE *argo_read_value(FILE *f) {
-    // TO BE IMPLEMENTED.
-    // abort();
+//     // TO BE IMPLEMENTED.
+//     argo_value_storage->next = NULL;
+//     argo_value_storage->prev = NULL;
+//     return argo_read_value_helper(f, argo_value_storage);
 // }
+
+// ARGO_VALUE *argo_read_value_helper(FILE *f, ARGO_VALUE *this) {
+//     int i = fgetc(f);
+//     int started = 0;
+//     while (i != EOF) {
+//         switch (i)
+//         {
+//         case '\b':
+//         case '\f':
+//         case '\r':
+//         case '\t':
+//             break;
+//         case '\n':
+//             argo_lines_read++;
+//             argo_chars_read = 0;
+//         default:
+//             break;
+//         }
+//         i = fgetc(f);
+//     }
+//     return this;
+// }
+
 
 /**
  * @brief  Read JSON input from a specified input stream, attempt to
@@ -49,10 +75,10 @@
  * @return  Zero if the operation is completely successful,
  * nonzero if there is any error.
  */
-int argo_read_string(ARGO_STRING *s, FILE *f) {
+// int argo_read_string(ARGO_STRING *s, FILE *f) {
     // TO BE IMPLEMENTED.
-    abort();    
-}
+    // abort();    
+// }
 
 /**
  * @brief  Read JSON input from a specified input stream, attempt to
@@ -76,10 +102,10 @@ int argo_read_string(ARGO_STRING *s, FILE *f) {
  * @return  Zero if the operation is completely successful,
  * nonzero if there is any error.
  */
-int argo_read_number(ARGO_NUMBER *n, FILE *f) {
+// int argo_read_number(ARGO_NUMBER *n, FILE *f) {
     // TO BE IMPLEMENTED.
-    abort();
-}
+    // abort();
+// }
 
 /**
  * @brief  Write canonical JSON representing a specified value to

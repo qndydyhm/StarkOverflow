@@ -4,7 +4,7 @@
 #include "global.h"
 #include "debug.h"
 
-int parse_arg(char *arg);
+char parse_arg(char *arg);
 int str2int(char *arg);
 
 /**
@@ -30,18 +30,18 @@ int validargs(int argc, char **argv)
     char **ptr = argv;
     switch (parse_arg(*(++ptr)))
     {
-    case 8:
+    case 'h':
         global_options = HELP_OPTION;
         isValid = 1;
         break;
-    case 4:
+    case 'v':
         if (argc == 2)
         {
             global_options = VALIDATE_OPTION;
             isValid = 1;
         }
         break;
-    case 2:
+    case 'c':
         if (argc == 2)
         {
             global_options = CANONICALIZE_OPTION;
@@ -49,7 +49,7 @@ int validargs(int argc, char **argv)
         }
         else
         {
-            if (parse_arg(*(++ptr)) == 1)
+            if (parse_arg(*(++ptr)) == 'p')
             {
                 int indented_value;
                 if (argc == 3) {
@@ -77,33 +77,17 @@ int validargs(int argc, char **argv)
     return -1;
 }
 
-int parse_arg(char *arg)
+char parse_arg(char *arg)
 {
-    int ans = -1;
     if (*arg == '-')
     {
         char arg1 = *(++arg), arg2 = *(++arg);
         if (arg2 == '\0')
         {
-            if (arg1 == 'h')
-            {
-                ans = 8;
-            }
-            else if (arg1 == 'v')
-            {
-                ans = 4;
-            }
-            else if (arg1 == 'c')
-            {
-                ans = 2;
-            }
-            else if (arg1 == 'p')
-            {
-                ans = 1;
-            }
+            return arg1;
         }
     }
-    return ans;
+    return '\0';
 }
 
 int str2int(char *arg)
