@@ -9,6 +9,7 @@ int argo_write_basic(ARGO_BASIC *b, FILE *f);
 int argo_write_object(ARGO_VALUE *o, FILE *f);
 int argo_write_array(ARGO_VALUE *a, FILE *f);
 int argo_write_number_helper(ARGO_STRING *s, FILE *f);
+int print_indent(FILE *f);
 /**
  * @brief  Read JSON input from a specified input stream, parse it,
  * and return a data structure representing the corresponding value.
@@ -293,7 +294,8 @@ int argo_write_number_helper(ARGO_STRING *s, FILE *f)
             else if (*c == '+' && !started)
             {
             }
-            else {
+            else
+            {
                 return -1;
             }
             started = 1;
@@ -308,7 +310,7 @@ int argo_write_number_helper(ARGO_STRING *s, FILE *f)
     {
         num /= 10;
     }
-    
+
     fprintf(f, "0.%d", num);
     if (exp && num != 0)
     {
@@ -373,6 +375,8 @@ int argo_write_string(ARGO_STRING *s, FILE *f)
 int argo_write_object(ARGO_VALUE *o, FILE *f)
 {
     fprintf(f, "{");
+    indent_level++;
+    print_indent(f);
     ARGO_VALUE *ptr = o;
     while (ptr->next->type != ARGO_NO_TYPE)
     {
@@ -383,8 +387,11 @@ int argo_write_object(ARGO_VALUE *o, FILE *f)
         if (ptr->next->type != ARGO_NO_TYPE)
         {
             fprintf(f, ",");
+            print_indent(f);
         }
     }
+    indent_level--;
+    print_indent(f);
     fprintf(f, "}");
     return 0;
 }
@@ -392,6 +399,8 @@ int argo_write_object(ARGO_VALUE *o, FILE *f)
 int argo_write_array(ARGO_VALUE *a, FILE *f)
 {
     fprintf(f, "[");
+    indent_level++;
+    print_indent(f);
     ARGO_VALUE *ptr = a;
     while (ptr->next->type != ARGO_NO_TYPE)
     {
@@ -400,8 +409,27 @@ int argo_write_array(ARGO_VALUE *a, FILE *f)
         if (ptr->next->type != ARGO_NO_TYPE)
         {
             fprintf(f, ",");
+            print_indent(f);
         }
     }
+    indent_level--;
+    print_indent(f);
     fprintf(f, "]");
+    return 0;
+}
+
+int print_indent(FILE *f)
+{
+    if (global_options & PRETTY_PRINT_OPTION)
+    {
+        fprintf(f, "\n");
+        for (size_t i = 0; i < indent_level; i++)
+        {
+            for (size_t j = 0; j < (global_options & 0x0fffffff); j++)
+            {
+                fprintf(f, " ");
+            }
+        }
+    }
     return 0;
 }
