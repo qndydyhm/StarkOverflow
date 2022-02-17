@@ -5,7 +5,10 @@
 #include "global.h"
 #include "debug.h"
 
-// ARGO_VALUE *argo_read_value_helper(FILE *f, ARGO_VALUE *this);
+int argo_write_basic(ARGO_BASIC *b, FILE *f);
+int argo_write_object(ARGO_VALUE *o, FILE *f);
+int argo_write_array(ARGO_VALUE *a, FILE *f);
+int argo_write_number_helper(ARGO_STRING *s, FILE *f);
 /**
  * @brief  Read JSON input from a specified input stream, parse it,
  * and return a data structure representing the corresponding value.
@@ -29,9 +32,8 @@
  */
 // ARGO_VALUE *argo_read_value(FILE *f) {
 //     // TO BE IMPLEMENTED.
-//     argo_value_storage->next = NULL;
-//     argo_value_storage->prev = NULL;
-//     return argo_read_value_helper(f, argo_value_storage);
+
+//     return NULL;
 // }
 
 // ARGO_VALUE *argo_read_value_helper(FILE *f, ARGO_VALUE *this) {
@@ -56,7 +58,6 @@
 //     return this;
 // }
 
-
 /**
  * @brief  Read JSON input from a specified input stream, attempt to
  * parse it as a JSON string literal, and return a data structure
@@ -76,8 +77,8 @@
  * nonzero if there is any error.
  */
 // int argo_read_string(ARGO_STRING *s, FILE *f) {
-    // TO BE IMPLEMENTED.
-    // abort();    
+// TO BE IMPLEMENTED.
+// abort();
 // }
 
 /**
@@ -103,8 +104,8 @@
  * nonzero if there is any error.
  */
 // int argo_read_number(ARGO_NUMBER *n, FILE *f) {
-    // TO BE IMPLEMENTED.
-    // abort();
+// TO BE IMPLEMENTED.
+// abort();
 // }
 
 /**
@@ -120,10 +121,31 @@
  * @return  Zero if the operation is completely successful,
  * nonzero if there is any error.
  */
-// int argo_write_value(ARGO_VALUE *v, FILE *f) {
-    // TO BE IMPLEMENTED.
-    // abort();
-// }
+int argo_write_value(ARGO_VALUE *v, FILE *f)
+{
+    switch (v->type)
+    {
+    case ARGO_BASIC_TYPE:
+        argo_write_basic(&v->content.basic, f);
+        break;
+    case ARGO_NUMBER_TYPE:
+        argo_write_number(&v->content.number, f);
+        break;
+    case ARGO_STRING_TYPE:
+        argo_write_string(&v->content.string, f);
+        break;
+    case ARGO_OBJECT_TYPE:
+        argo_write_object(v->content.object.member_list, f);
+        break;
+    case ARGO_ARRAY_TYPE:
+        argo_write_array(v->content.array.element_list, f);
+        break;
+    default:
+        abort();
+        break;
+    }
+    return 0;
+}
 
 /**
  * @brief  Write canonical JSON representing a specified string
@@ -145,10 +167,25 @@
  * @return  Zero if the operation is completely successful,
  * nonzero if there is any error.
  */
-// int argo_write_string(ARGO_STRING *s, FILE *f) {
-    // TO BE IMPLEMENTED.
-    // abort();
-// }
+int argo_write_basic(ARGO_BASIC *b, FILE *f)
+{
+    switch (*b)
+    {
+    case ARGO_NULL:
+        fprintf(f, ARGO_NULL_TOKEN);
+        break;
+    case ARGO_TRUE:
+        fprintf(f, ARGO_TRUE_TOKEN);
+        break;
+    case ARGO_FALSE:
+        fprintf(f, ARGO_FALSE_TOKEN);
+        break;
+    default:
+        return -1;
+        break;
+    }
+    return 0;
+}
 
 /**
  * @brief  Write canonical JSON representing a specified number
@@ -168,7 +205,203 @@
  * @return  Zero if the operation is completely successful,
  * nonzero if there is any error.
  */
-// int argo_write_number(ARGO_NUMBER *n, FILE *f) {
-    // TO BE IMPLEMENTED.
-    // abort();
-// }
+
+int argo_write_number(ARGO_NUMBER *n, FILE *f)
+{
+    if (n->valid_int)
+    {
+        fprintf(f, "%ld", n->int_value);
+    }
+    else if (n->valid_float && n->float_value < 1 && n->float_value >= 0.1)
+    {
+        fprintf(f, "%f", n->float_value);
+    }
+    else if (n->valid_string)
+    {
+        return argo_write_number_helper(&n->string_value, f);
+    }
+    else
+    {
+        return -1;
+    }
+    return 0;
+}
+
+int argo_write_number_helper(ARGO_STRING *s, FILE *f)
+{
+    int *c = s->content;
+    int num = 0, exp = 0, exp_tmp = 0, is_before_separator = 1, num_is_plus = 1, started = 0, exp_is_plus = 1, is_num = 1, integer_is_zero = 0, fractional_is_zero = 1;
+    for (size_t index = 0; index < s->length; index++, c++)
+    {
+        if (is_num)
+        {
+            if (argo_is_digit(*c))
+            {
+                num = num * 10 + (*c - '0');
+                if (is_before_separator && num)
+                {
+                    exp += 1;
+                }
+                if (integer_is_zero && fractional_is_zero)
+                {
+                    if (*c == '0')
+                    {
+                        exp -= 1;
+                    }
+                    else
+                    {
+                        fractional_is_zero = 0;
+                    }
+                }
+            }
+            else if (argo_is_exponent(*c))
+            {
+                started = 0, is_num = 0;
+                continue;
+            }
+            else if (*c == '-' && !started)
+            {
+                num_is_plus = -1;
+            }
+            else if (*c == '+' && !started)
+            {
+            }
+            else if (*c == '.' && is_before_separator)
+            {
+                is_before_separator = 0;
+                if (!num)
+                {
+                    integer_is_zero = 1;
+                }
+            }
+            else
+            {
+                return -1;
+            }
+            started = 1;
+        }
+        else
+        {
+            if (argo_is_digit(*c))
+            {
+                exp_tmp = exp_tmp * 10 + (*c - '0');
+            }
+            else if (*c == '-' && !started)
+            {
+                exp_is_plus = -1;
+            }
+            else if (*c == '+' && !started)
+            {
+            }
+            else {
+                return -1;
+            }
+            started = 1;
+        }
+    }
+    exp = exp_is_plus * exp_tmp + exp;
+    if (num_is_plus == -1)
+    {
+        fprintf(f, "-");
+    }
+    while (num % 10 == 0 && num != 0)
+    {
+        num /= 10;
+    }
+    
+    fprintf(f, "0.%d", num);
+    if (exp && num != 0)
+    {
+        fprintf(f, "e%d", exp);
+    }
+    return 0;
+}
+int argo_write_string(ARGO_STRING *s, FILE *f)
+{
+    fprintf(f, "\"");
+    int *c = s->content;
+    for (size_t index = 0; index < s->length; index++, c++)
+    {
+        switch (*c)
+        {
+        case ARGO_BS:
+            fprintf(f, "\\b");
+            break;
+        case ARGO_FF:
+            fprintf(f, "\\f");
+            break;
+        case ARGO_LF:
+            fprintf(f, "\\n");
+            break;
+        case ARGO_CR:
+            fprintf(f, "\\r");
+            break;
+        case ARGO_HT:
+            fprintf(f, "\\t");
+            break;
+        case ARGO_BSLASH:
+            fprintf(f, "\\\\");
+            break;
+        case ARGO_QUOTE:
+            fprintf(f, "\\\"");
+            break;
+        default:
+            if (argo_is_control(*c))
+            {
+                int tmp = 0xf;
+                char lsb = *c & 0xff;
+                if (lsb <= 0xf)
+                {
+                    fprintf(f, "\\u000%x", lsb);
+                }
+                else
+                {
+                    fprintf(f, "\\u00%x", lsb);
+                }
+            }
+            else
+            {
+                fprintf(f, "%c", *c);
+            }
+            break;
+        }
+    }
+    fprintf(f, "\"");
+    return 0;
+}
+
+int argo_write_object(ARGO_VALUE *o, FILE *f)
+{
+    fprintf(f, "{");
+    ARGO_VALUE *ptr = o;
+    while (ptr->next->type != ARGO_NO_TYPE)
+    {
+        argo_write_string(&ptr->next->name, f);
+        fprintf(f, ":");
+        argo_write_value(ptr->next, f);
+        ptr = ptr->next;
+        if (ptr->next->type != ARGO_NO_TYPE)
+        {
+            fprintf(f, ",");
+        }
+    }
+    fprintf(f, "}");
+    return 0;
+}
+
+int argo_write_array(ARGO_VALUE *a, FILE *f)
+{
+    fprintf(f, "[");
+    ARGO_VALUE *ptr = a;
+    while (ptr->next->type != ARGO_NO_TYPE)
+    {
+        argo_write_value(ptr->next, f);
+        ptr = ptr->next;
+        if (ptr->next->type != ARGO_NO_TYPE)
+        {
+            fprintf(f, ",");
+        }
+    }
+    fprintf(f, "]");
+    return 0;
+}
