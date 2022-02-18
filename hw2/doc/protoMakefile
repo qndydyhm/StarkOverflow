@@ -1,0 +1,46 @@
+# *********************
+# * protoMakefile     *
+# * for Par 3.20      *
+# * Copyright 1993 by *
+# * Adam M. Costello  *
+# *********************
+
+
+# Define CC so that the command
+# $(CC) foo.c
+# compiles the ANSI C source file "foo.c" into the object file "foo.o".
+#
+# Example (for Sun workstations):
+# CC = acc -c -O -s -Xc
+
+CC =
+
+# Define LINK1 and LINK2 so that the command
+# $(LINK1) foo1.o foo2.o foo3.o $(LINK2) foo
+# links the object files "foo1.o", "foo2.o", "foo3.o"
+# into the executable file "foo".
+#
+# Example (for Sun workstations):
+# LINK1 = acc -s
+# LINK2 = -o
+
+LINK1 =
+LINK2 =
+
+# You shouldn't need to modify anything below this line.
+
+OBJS = buffer.o errmsg.o par.o reformat.o
+
+.c.o:
+	$(CC) $<
+
+par: $(OBJS)
+	$(LINK1) $(OBJS) $(LINK2) par
+
+buffer.o: buffer.c buffer.h errmsg.h
+
+errmsg.o: errmsg.c errmsg.h
+
+par.o: par.c errmsg.h buffer.h reformat.h
+
+reformat.o: reformat.c reformat.h buffer.h errmsg.h

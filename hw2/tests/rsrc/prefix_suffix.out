@@ -1,0 +1,12 @@
+  /* We can't simply return c - '0' because this is ANSI C code, so it has to */
+  /* work for any character set, not just ones which put the digits together  */
+  /* in order.                                                                */
+
+/* Puts the decimal value of the string s into *pn, returning 1 on success.   */
+/* If s is empty, or contains non-digits, or represents an integer greater    */
+/* than 9999, then *pn is not changed and 0 is returned. Does not use errmsg. */
+
+/* Reads lines from stdin until EOF, or until a blank line is encountered,    */
+/* in which case the newline is pushed back onto the input stream. Returns a  */
+/* NULL-terminated array of pointers to individual lines, stripped of their   */
+/* newline characters. Uses errmsg, and returns NULL on failure.              */

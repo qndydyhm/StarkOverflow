@@ -1,0 +1,628 @@
+.\"*********************
+.\"* par.1             *
+.\"* for Par 3.20      *
+.\"* Copyright 1993 by *
+.\"* Adam M. Costello  *
+.\"*********************
+.\"
+.\" This is nroff -man (or troff -man) code.
+.\"
+.TH par 1 "1993" "Par 3.20" "USER COMMANDS"
+.SH NAME
+par \- filter for reformatting paragraphs
+.SH SYNOPSIS
+.ds O \fR[\fP
+.ds C \fR]\fP
+.de OP
+.BI \*O\ \\$1 \\$2\ \*C
+..
+.HP
+.na
+.B par
+.OP w width
+.OP p prefix
+.OP s suffix
+.OP h \*Ohang\*C
+.OP l \*Olast\*C
+.OP m \*Omin\*C
+.OP version
+.ad
+.LP 0.5i
+Any option may be immediately
+preceeded by a minus sign (\-).
+.ie t .ds Q ``
+.el .ds Q ""
+.ie t .ds U ''
+.el .ds U ""
+.SH DESCRIPTION
+.de IT
+.LP
+\h'-\w"\\$1\ "u'\\$1\ \\$2 \\$3 \\$4 \\$5 \\$6 \\$7 \\$8 \\$9
+..
+.LP
+.B par
+is a filter which copies its input to
+its output, reformatting each paragraph.
+Paragraphs are delimited by blank lines.
+.LP
+Each output paragraph is generated from
+the corresponding input lines as follows:
+.RS
+.LP
+.IT 1. An optional prefix and/or suffix
+is removed from each input line.
+.IT 2. The remainder is divided into
+words (delimited by white space).
+.IT 3. The words are joined into lines
+to make an eye-pleasing paragraph.
+.IT 4. The prefixes and suffixes are reattached.
+.SH OPTIONS
+.LP
+All options except
+.B version
+are used to set values of variables. Values set by
+command line options hold for all paragraphs in the
+input. Unset variables are given default values
+which are recomputed separately for each paragraph.
+.LP
+The approximate role of each
+variable is described here. See the
+.SM DETAILS
+section for a much more complete and precise description.
+.TP 1i
+.BI w width
+Sets the value of
+.IR width,
+the maximum width of the output paragraph, in characters,
+not including the trailing newline characters.
+Must be an unsigned decimal integer greater than
+.I prefix
+(see below). Defaults to 72. If
+.I width
+is 9 or more, the
+.B w
+is not needed.
+.TP
+.BI p prefix
+Sets the value of
+.IR prefix ,
+the length of the prefix, in characters. Must be an unsigned
+decimal integer. Defaults to 0 if there are no more than
+.I hang
++ 1 lines in the input paragraph (see the
+.B h
+option). Otherwise defaults to the length
+of the longest common prefix of all lines
+in the input paragraph except the first
+.I hang
+of them. The first
+.I prefix
+characters of each output line are copied from the first
+.I prefix
+characters of the corresponding input line. If
+.I prefix
+is 8 or less, the
+.B p
+is not needed.
+.TP
+.BI s suffix
+Sets the value of
+.IR suffix ,
+the length of the suffix, in characters. Must be an unsigned
+decimal integer. Defaults to 0 if there is no more than
+1 line in the input paragraph. Otherwise defaults to the
+length of the longest common suffix of all lines in the
+input paragraph, after this common suffix has been stripped
+of all initial white characters save the last. The last
+.I suffix
+characters of each output line are copied from the last
+.I suffix
+characters of the corresponding input line.
+.TP
+.BI h\fR[ hang\fR]
+Sets the value of
+.IR hang .
+Must be an unsigned decimal integer. Defaults
+to 0. Mainly affects the default value of
+.I prefix
+(see the
+.B p
+option). If the
+.B h
+option is given without a number, the value 1 is assumed.
+.TP
+.BI l\fR[ last\fR]
+Sets the value of
+.IR last .
+Must be 0 or 1. Defaults to 0. If
+.I last
+is 1,
+.B par
+tries to make the last line of the output paragraph
+about the same length as the others. If the l option
+is given without a number, the value 1 is assumed.
+.TP
+.BI m\fR[ min\fR]
+Sets the value of
+.IR min .
+Must be 0 or 1. Defaults to
+.IR last .
+If
+.I min
+is 1,
+.B par
+will try to make the paragraph narrower
+without shortening the shortest line. If the
+.B m
+option is given without a number, the value 1 is assumed.
+.TP
+.B version
+Causes all other options to be ignored. No input is
+read. \*Qpar 3.20\*U is printed on the output. Of
+course, this will change in future releases of Par.
+.LP 0.5i
+If the value of any variable is set more than
+once, the last value is used. For each paragraph,
+default values for any variables not set by command
+line options are computed in the following order:
+.RS
+.LP
+.I width hang last min prefix suffix
+.RE
+.LP
+No integer appearing in an option may exceed 9999.
+.LP
+It is an error if
+.I width
+<=
+.I prefix
++
+.IR suffix .
+.SH ENVIRONMENT
+.LP
+If the environment variable
+.SM PARINIT
+is set,
+.B par
+will read command line options from it
+before it reads them from the command line.
+.SH DETAILS
+.LP
+The white characters are the space, formfeed,
+newline, carriage return, tab, and vertical tab.
+.LP
+Lines are terminated by newline characters, but the
+newlines are not considered to be included in the lines.
+If the last character of the input is a non-newline,
+then a newline will be inferred immediately after
+it (but if the input is empty, no newline will be
+inferred; the number of input lines will be 0). Thus,
+the input can always be viewed as a sequence of lines.
+.LP
+A line is called
+.I blank
+if and only if it contains no non-white characters.
+A subsequence of non-blank lines is called
+.I maximal
+if and only if there is no non-blank
+line immediately before or after it.
+.LP
+The process described in the remainder of this section
+is applied independently to each maximal subsequence of
+non-blank input lines. (Each blank line of the input
+is transformed into an empty line on the output).
+.LP
+After the values of the variables are determined (see the
+.SM OPTIONS
+section), the first
+.I prefix
+characters and the last
+.I suffix
+characters of each input line are removed and remembered.
+It is an error for any line to contain fewer than
+.I prefix
++
+.I suffix
+characters.
+.LP
+The remaining text is treated as a sequence of
+characters, not lines. The text is broken into words,
+which are delimited by white characters. That is, a
+.I word
+is a maximal sub-sequence of non-white characters. If there
+is at least one word, and the first word is preceeded only
+by spaces (strictly spaces, not other white characters),
+then the first word is expanded to include those spaces.
+.LP
+Let
+.I L
+=
+.I width
+\-
+.I prefix
+\-
+.IR suffix .
+.LP
+Every word which contains more than
+.I L
+characters is broken, after each
+.IR L th
+character, into multiple words.
+.LP
+These words are reassembled, preserving their
+order, into lines. Adjacent words within
+a line are separated by a single space.
+.LP
+If all the words fit on a single line of no more than
+.I L
+characters, then no line breaks are inserted. Otherwise,
+line breaks are placed in such a way that the
+resulting paragraph satisfies certain properties. If
+.I min
+is 1, those properties are:
+.RS
+.LP
+.IT 1. No line contains more than
+.I L
+characters.
+.IT 2. The shortest line is as
+long as possible, subject to 1.
+.IT 3. The longest line is as short as possible,
+subject to properties 1 and 2. Call its length
+.IR newL .
+.IT 4. The sum of the squares
+of the differences between
+.I newL
+and the lengths of the lines is as small as
+possible, subject to properties 1, 2, and 3.
+.RE
+.LP
+If
+.I last
+is 0, then the last line does not count as a line
+for the purposes of properties 2 and 4 above.
+.LP
+If
+.I min
+is 0, then property 3 is disregarded, and
+.I newL
+is set equal to
+.IR L .
+.LP
+If the number of lines in the
+resultant paragraph is less than
+.IR hang ,
+then empty lines are added at the end
+to bring the number of lines up to
+.IR hang .
+.LP
+If
+.I suffix
+is not 0, then each line is padded at the
+end with spaces to bring its length up to
+.IR newL .
+.LP
+To each line is prepended
+.I prefix
+characters. Let
+.I n
+be the number of input lines. The
+characters which are prepended to the
+.IR i th
+line are chosen as follows:
+.RS
+.LP
+.IT 1. If
+.I i
+<=
+.IR n ,
+then the characters are copied from the ones
+that were removed from the beginning of the
+.IR n th
+input line.
+.IT 2. If
+.I i
+>
+.I n
+>
+.IR hang ,
+then the characters are copied from the ones that were
+removed from the beginning of the last input line.
+.IT 3. If
+.I i
+>
+.I n
+and
+.I n
+<=
+.IR hang ,
+then the characters are all spaces.
+.RE
+.LP
+Then to each line is appended
+.I suffix
+characters. The characters which are appended to the
+.IR i th
+line are chosen as follows:
+.RS
+.LP
+.IT 1. If
+.I i
+<=
+.IR n ,
+then the characters are copied from the
+ones that were removed from the end of the
+.IR n th
+input line.
+.IT 2. If
+.I i
+>
+.I n
+> 0, then the characters are copied from the ones that
+were removed from the end of the last input line.
+.IT 3. If
+.I n
+= 0, then the characters are all spaces.
+.RE
+.LP
+Finally, the lines are printed to the output.
+.SH DIAGNOSTICS
+.LP
+If there are no errors,
+.B par
+returns
+.SM EXIT_SUCCESS
+(see
+.BR <stdlib.h> ).
+.LP
+If there is an error, then an error
+message will be printed to the output, and
+.B par
+will return
+.SM EXIT_FAILURE\s0\.
+If the error is local to a single paragraph, then the
+preceeding paragraphs will have been output before the
+error was detected. Line numbers in error messages are
+local to the input paragraph in which the error occurred.
+.LP
+Of course, trying to print an error message would be
+futile if an error resulted from an output function, so
+.B par
+doesn't bother doing any error checking on output functions.
+.SH EXAMPLES
+.de VS
+.RS -0.5i
+.LP
+.nf
+.ps -1
+.cs R 20
+..
+.de VE
+.cs R
+.ps
+.fi
+.RE
+..
+.de CM
+\&\*Q\fB\\$1\fP\\*U:
+..
+.LP
+The superiority of
+.BR par 's
+dynamic programming algorithm over a
+greedy algorithm (such as the one used by
+.BR fmt )
+can be seen in the following example:
+.LP
+Original paragraph (note that
+each line begins with 8 spaces):
+.VS
+        We hold these truths to be self evident,
+        that all men are created equal,
+        that they are endowed by their creator
+        with certain unalienable rights,
+        that among these are
+        life, liberty, and the
+        pursuit of happiness.
+.VE
+.LP
+After a greedy algorithm with width = 61:
+.VS
+        We hold these truths to be self evident, that all men
+        are created equal, that they are endowed by their
+        creator with certain unalienable rights, that among
+        these are life, liberty, and the pursuit of
+        happiness.
+.VE
+.LP
+After
+.CM "par 61"
+.VS
+        We hold these truths to be self evident, that all
+        men are created equal, that they are endowed by
+        their creator with certain unalienable rights, that
+        among these are life, liberty, and the pursuit of
+        happiness.
+.VE
+.LP
+The line breaks chosen by
+.B par
+are clearly more pleasing.
+.LP
+I use
+.B par
+in conjunction with the !} command of the
+.B vi
+editor. Other editors probably provide
+a similar feature for filtering text.
+.LP
+The rest of this section is a series of
+before-and-after pictures showing some typical uses of
+.BR par .
+.LP
+Before:
+.VS
+          Four score and seven years ago, our fathers brought
+        forth on this continent
+        a new nation.
+.VE
+.LP
+After
+.CM "par 42"
+.VS
+          Four score and seven years ago,
+        our fathers brought forth on this
+        continent a new nation.
+.VE
+.LP
+Before:
+.VS
+        /* Four score and seven years */
+        /* ago, our */
+        /* fathers brought forth on this continent */
+        /* a new nation. */
+.VE
+.LP
+After
+.CM "par 42"
+.VS
+        /* Four score and seven years   */
+        /* ago, our fathers brought     */
+        /* forth on this continent a    */
+        /* new nation.                  */
+.VE
+.LP
+Or after
+.CM "par l 42"
+.VS
+        /* Four score and seven    */
+        /* years ago, our fathers  */
+        /* brought forth on this   */
+        /* continent a new nation. */
+.VE
+.LP
+Or after
+.CM "par l 42 m0"
+.VS
+        /* Four score and seven         */
+        /* years ago, our fathers       */
+        /* brought forth on this        */
+        /* continent a new nation.      */
+.VE
+.LP
+Before:
+.VS
+        Gettysburg Address: Four score
+                            and seven years ago,
+                            our fathers brought forth on
+                            this continent
+                            a new nation.
+.VE
+.LP
+After
+.CM "par h 56"
+.VS
+        Gettysburg Address: Four score and seven years
+                            ago, our fathers brought
+                            forth on this continent a
+                            new nation.
+.VE
+.LP
+Before:
+.VS
+        1  Four score and
+        2  seven years ago,
+        3  our fathers brought
+        4  forth on this continent
+        5  a new nation.
+.VE
+.LP
+After
+.CM "par p11 44"
+.VS
+        1  Four score and seven years ago,
+        2  our fathers brought forth on this
+        3  continent a new nation.
+.VE
+.SH SEE ALSO
+.LP
+.B par.doc
+.SH LIMITATIONS
+.LP
+If you like two spaces between sentences, too
+bad. Differentiating between periods that end
+sentences and periods used in abbreviations
+is a complex problem beyond the scope of this
+simple filter. Consider the following tough case:
+.VS
+        I calc'd the approx.
+        Fermi level to 3 sig. digits.
+.VE
+.LP
+Suppose that that should be reformatted to:
+.VS
+        I calc'd the approx. Fermi
+        level to three sig. digits.
+.VE
+.LP
+The program has to decide whether to put 1 or 2 spaces
+between \*Qapprox.\*U and \*QFermi\*U. There is no obvious
+hint from the original paragraph because there was a line
+break between them, and \*QFermi\*U begins with a capital
+letter. The program would apparently have to understand
+English grammar to determine that the sentence does not
+end there (and then it would only work for English text).
+.LP
+If you use tabs, you probably won't like the way
+.B par
+handles
+(or doesn't handle) them. It treats them just like spaces.
+I didn't bother trying to make sense of tabs because they
+don't make sense to begin with. Not everyone's terminal
+has the same tab settings, so text files containing
+tabs are sometimes mangled. In fact, almost every text
+file containing tabs gets mangled when something is
+inserted at the beginning of each line (when quoting
+e-mail or commenting out a section of a shell script, for
+example), making them a pain to edit. In my opinion, the
+world would be a nicer place if everyone stopped using
+tabs (so I'm doing my part by not supporting them in
+.BR par .)
+.LP
+There is currently no way for the length of the
+output prefix to differ from the length of the
+input prefix. Ditto for the suffix. I may consider
+adding this capability in a future release, but
+right now I'm not sure how I'd want it to work.
+.SH BUGS
+.LP
+If I knew of any bugs, I wouldn't have released the package.
+Of course, there may be bugs that I haven't yet discovered.
+.LP
+If you find any bugs, or if you have
+any suggestions, please send e-mail to:
+.RS
+.LP
+amc@wuecl.wustl.edu
+.RE
+.LP
+or send paper mail to:
+.RS
+.LP
+.nf
+Adam M. Costello
+Campus Box 1045
+Washington University
+One Brookings Dr.
+St. Louis, MO 63130
+USA
+.fi
+.RE
+.LP
+Note that both addresses could
+change anytime after June 1994.
+.LP
+When reporting a bug, please include the exact input and
+command line options used, and the version number of
+.BR par ,
+so that I can reproduce it.
