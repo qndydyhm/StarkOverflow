@@ -25,19 +25,36 @@ int main(int argc, char **argv)
         USAGE(*argv, EXIT_SUCCESS);
     else if (global_options == VALIDATE_OPTION)
     {
-        argo_read_value(stdin);
+                ARGO_VALUE *json = argo_read_value(stdin);
+        if (json == NULL)
+        {
+            return EXIT_FAILURE;
+        }
         return EXIT_SUCCESS;
     }
     else if (global_options == CANONICALIZE_OPTION)
     {
         ARGO_VALUE *json = argo_read_value(stdin);
+        if (json == NULL)
+        {
+            return EXIT_FAILURE;
+        }
+        
         argo_write_value(json, stdout);
         return EXIT_SUCCESS;
     }
     else if (global_options & PRETTY_PRINT_OPTION)
     {
         ARGO_VALUE *json = argo_read_value(stdin);
-        argo_write_value(json, stdout);
+        if (json == NULL)
+        {
+            return EXIT_FAILURE;
+        }
+        if (argo_write_value(json, stdout)) {
+            return EXIT_FAILURE;
+        }
+        
+        fprintf(stdout, "\n");
         return EXIT_SUCCESS;
     }
     // TO BE IMPLEMENTED
