@@ -904,7 +904,17 @@ int argo_write_string(ARGO_STRING *s, FILE *f)
             }
             else
             {
-                fprintf(f, "%c", *c);
+                if (c <= 0xff)
+                {
+                    fprintf(f, "%c", *c);
+                }
+                else if (c <= 0xfff)
+                {
+                    fprintf(f, "\\u0%x", c);
+                }
+                else {
+                    fprintf(f, "\\u%x", c);
+                }
             }
             break;
         }
