@@ -227,7 +227,7 @@ int argo_read_string(ARGO_STRING *s, FILE *f)
     {
         if (argo_is_control(c))
         {
-            print_error_helper();
+            return print_error_helper();
         }
         if (c == '"')
         {
@@ -270,7 +270,7 @@ int argo_read_string(ARGO_STRING *s, FILE *f)
                     c = argo_get_next_char(f);
                     if (!argo_is_hex(c))
                     {
-                        print_error_helper();
+                        return print_error_helper();
                     }
                     if (argo_is_digit(c))
                     {
