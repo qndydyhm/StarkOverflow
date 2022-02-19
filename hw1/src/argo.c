@@ -476,6 +476,7 @@ int argo_read_false(ARGO_BASIC *b, FILE *f)
             c = argo_get_next_char(f);
             if (c == 's')
             {
+                c = argo_get_next_char(f);
                 if (c == 'e')
                 {
                     *b = ARGO_FALSE;
