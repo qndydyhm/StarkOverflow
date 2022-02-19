@@ -11,6 +11,7 @@ int argo_get_prev_char(FILE *f);
 int print_error_helper();
 int argo_read_string(ARGO_STRING *s, FILE *f);
 int argo_read_number(ARGO_NUMBER *n, FILE *f);
+ARGO_STRING *argo_read_number_helper(ARGO_CHAR *s, size_t length);
 int argo_read_true(ARGO_BASIC *b, FILE *f);
 int argo_read_false(ARGO_BASIC *b, FILE *f);
 int argo_read_null(ARGO_BASIC *b, FILE *f);
@@ -342,7 +343,7 @@ int argo_read_number(ARGO_NUMBER *n, FILE *f)
             {
                 c = 'e';
             }
-            
+
             *ptr = c;
             length++;
         }
@@ -365,7 +366,12 @@ int argo_read_number(ARGO_NUMBER *n, FILE *f)
                 if (has_separator)
                 {
                     digits_after_separator++;
-                    float_value += (c - '0') / (10 ^ digits_after_separator);
+                    int divide_num = 1;
+                    for (size_t i = 0; i < digits_after_separator; i++)
+                    {
+                        divide_num *= 10;
+                    }
+                    float_value += ((double)(c - '0') / (divide_num));
                 }
                 else
                 {
@@ -443,12 +449,138 @@ int argo_read_number(ARGO_NUMBER *n, FILE *f)
         tmp += (i);
         argo_append_char(&n->string_value, *tmp);
     }
-
+    ARGO_STRING *tmp = argo_read_number_helper(n->string_value.content, n->string_value.length);
+    n->string_value.capacity = tmp->capacity;
+    n->string_value.length = tmp->length;
+    n->string_value.content = tmp->content;
     n->valid_int = valid_int;
     n->valid_float = valid_float;
     n->valid_string = valid_string;
     argo_get_prev_char(f);
     return 0;
+}
+
+ARGO_STRING *argo_read_number_helper(ARGO_CHAR *s, size_t length)
+{
+    ARGO_VALUE *tmp = argo_get_next_value();
+    int *c = s;
+    int num = 0, exp = 0, exp_tmp = 0, is_before_separator = 1, num_is_plus = 1, started = 0, exp_is_plus = 1, is_num = 1, integer_is_zero = 0, fractional_is_zero = 1;
+    for (size_t index = 0; index < length; index++, c++)
+    {
+        if (is_num)
+        {
+            if (argo_is_digit(*c))
+            {
+                num = num * 10 + (*c - '0');
+                if (is_before_separator && num)
+                {
+                    exp += 1;
+                }
+                if (integer_is_zero && fractional_is_zero)
+                {
+                    if (*c == '0')
+                    {
+                        exp -= 1;
+                    }
+                    else
+                    {
+                        fractional_is_zero = 0;
+                    }
+                }
+            }
+            else if (argo_is_exponent(*c))
+            {
+                started = 0, is_num = 0;
+                continue;
+            }
+            else if (*c == '-' && !started)
+            {
+                num_is_plus = -1;
+            }
+            else if (*c == '+' && !started)
+            {
+            }
+            else if (*c == '.' && is_before_separator)
+            {
+                is_before_separator = 0;
+                if (!num)
+                {
+                    integer_is_zero = 1;
+                }
+            }
+            else
+            {
+                return NULL;
+            }
+            started = 1;
+        }
+        else
+        {
+            if (argo_is_digit(*c))
+            {
+                exp_tmp = exp_tmp * 10 + (*c - '0');
+            }
+            else if (*c == '-' && !started)
+            {
+                exp_is_plus = -1;
+            }
+            else if (*c == '+' && !started)
+            {
+            }
+            else
+            {
+                return NULL;
+            }
+            started = 1;
+        }
+    }
+    exp = exp_is_plus * exp_tmp + exp;
+    if (num_is_plus == -1)
+    {
+        argo_append_char(&tmp->content.string, '-');
+    }
+    while (num % 10 == 0 && num != 0)
+    {
+        num /= 10;
+    }
+    argo_append_char(&tmp->content.string, '0');
+    argo_append_char(&tmp->content.string, '.');
+    int rev = 0;
+    while (num > 0)
+    {
+        int lsb = num % 10;
+        num /= 10;
+        rev = rev * 10 + lsb;
+    }
+    while (rev > 0)
+    {
+        int lsb = rev % 10;
+        rev /= 10;
+        argo_append_char(&tmp->content.string, (lsb + '0'));
+    }
+
+    if (exp)
+    {
+        argo_append_char(&tmp->content.string, 'e');
+        if (exp < 0)
+        {
+            argo_append_char(&tmp->content.string, '-');
+            exp *= -1;
+        }
+        while (exp > 0)
+        {
+            int lsb = exp % 10;
+            exp /= 10;
+            rev = rev * 10 + lsb;
+        }
+        while (rev > 0)
+        {
+            int lsb = rev % 10;
+            rev /= 10;
+            argo_append_char(&tmp->content.string, (lsb + '0'));
+        }
+    }
+    return &tmp->content.string;
 }
 
 int argo_read_true(ARGO_BASIC *b, FILE *f)
@@ -618,7 +750,8 @@ int argo_read_array(ARGO_ARRAY *a, FILE *f)
         {
             break;
         }
-        else {
+        else
+        {
             argo_get_prev_char(f);
         }
 
@@ -912,7 +1045,8 @@ int argo_write_string(ARGO_STRING *s, FILE *f)
                 {
                     fprintf(f, "\\u0%x", *c);
                 }
-                else {
+                else
+                {
                     fprintf(f, "\\u%x", *c);
                 }
             }
@@ -949,7 +1083,7 @@ int argo_write_object(ARGO_VALUE *o, FILE *f)
     indent_level--;
     print_indent(f);
     fprintf(f, "}");
-    if (indent_level == 0)
+    if (indent_level == 0 && global_options & PRETTY_PRINT_OPTION)
     {
         fprintf(f, "\n");
     }
@@ -975,11 +1109,11 @@ int argo_write_array(ARGO_VALUE *a, FILE *f)
     indent_level--;
     print_indent(f);
     fprintf(f, "]");
-    if (indent_level == 0)
+    if (indent_level == 0 && global_options & PRETTY_PRINT_OPTION)
     {
         fprintf(f, "\n");
     }
-    
+
     return 0;
 }
 
