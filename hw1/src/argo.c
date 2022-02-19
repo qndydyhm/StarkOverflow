@@ -369,7 +369,7 @@ int argo_read_number(ARGO_NUMBER *n, FILE *f)
                 }
                 else
                 {
-                    float_value = float_value + 10 + (c - '0');
+                    float_value = float_value * 10 + (c - '0');
                 }
             }
         }
@@ -949,6 +949,10 @@ int argo_write_object(ARGO_VALUE *o, FILE *f)
     indent_level--;
     print_indent(f);
     fprintf(f, "}");
+    if (indent_level == 0)
+    {
+        fprintf(f, "\n");
+    }
     return 0;
 }
 
@@ -971,6 +975,11 @@ int argo_write_array(ARGO_VALUE *a, FILE *f)
     indent_level--;
     print_indent(f);
     fprintf(f, "]");
+    if (indent_level == 0)
+    {
+        fprintf(f, "\n");
+    }
+    
     return 0;
 }
 

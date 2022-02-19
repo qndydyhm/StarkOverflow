@@ -53,8 +53,6 @@ int main(int argc, char **argv)
         if (argo_write_value(json, stdout)) {
             return EXIT_FAILURE;
         }
-        
-        fprintf(stdout, "\n");
         return EXIT_SUCCESS;
     }
     // TO BE IMPLEMENTED
