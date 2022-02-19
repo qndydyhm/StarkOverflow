@@ -338,6 +338,11 @@ int argo_read_number(ARGO_NUMBER *n, FILE *f)
         {
             ARGO_CHAR *ptr = string_value;
             ptr += length;
+            if (c == 'E')
+            {
+                c = 'e';
+            }
+            
             *ptr = c;
             length++;
         }
