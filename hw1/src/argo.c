@@ -859,6 +859,10 @@ int argo_write_basic(ARGO_BASIC *b, FILE *f)
         return -1;
         break;
     }
+    if (indent_level == 0 && global_options & PRETTY_PRINT_OPTION)
+    {
+        fprintf(f, "\n");
+    }
     return 0;
 }
 
@@ -898,6 +902,10 @@ int argo_write_number(ARGO_NUMBER *n, FILE *f)
     else
     {
         return -1;
+    }
+    if (indent_level == 0 && global_options & PRETTY_PRINT_OPTION)
+    {
+        fprintf(f, "\n");
     }
     return 0;
 }
@@ -1054,6 +1062,10 @@ int argo_write_string(ARGO_STRING *s, FILE *f)
         }
     }
     fprintf(f, "\"");
+    if (indent_level == 0 && global_options & PRETTY_PRINT_OPTION)
+    {
+        fprintf(f, "\n");
+    }
     return 0;
 }
 
@@ -1061,10 +1073,10 @@ int argo_write_object(ARGO_VALUE *o, FILE *f)
 {
     fprintf(f, "{");
     indent_level++;
-    print_indent(f);
     ARGO_VALUE *ptr = o;
     while (ptr->next->type != ARGO_NO_TYPE)
     {
+        print_indent(f);
         argo_write_string(&ptr->next->name, f);
         fprintf(f, ":");
         if (global_options & PRETTY_PRINT_OPTION)
@@ -1077,7 +1089,6 @@ int argo_write_object(ARGO_VALUE *o, FILE *f)
         if (ptr->next->type != ARGO_NO_TYPE)
         {
             fprintf(f, ",");
-            print_indent(f);
         }
     }
     indent_level--;
@@ -1094,16 +1105,15 @@ int argo_write_array(ARGO_VALUE *a, FILE *f)
 {
     fprintf(f, "[");
     indent_level++;
-    print_indent(f);
     ARGO_VALUE *ptr = a;
     while (ptr->next->type != ARGO_NO_TYPE)
     {
+        print_indent(f);
         argo_write_value(ptr->next, f);
         ptr = ptr->next;
         if (ptr->next->type != ARGO_NO_TYPE)
         {
             fprintf(f, ",");
-            print_indent(f);
         }
     }
     indent_level--;
