@@ -1,0 +1,486 @@
+  *********************
+  * par.doc           *
+  * for Par 3.20      *
+  * Copyright 1993 by *
+  * Adam M. Costello  *
+  *********************
+
+
+    Par 3.20 is a package containing:
+
+       + This doc file.
+       + A man page based on this doc file.
+       + The ANSI C source for the filter "par".
+
+
+Contents
+
+    Contents
+    File List
+    Rights and Responsibilities
+    Release Notes
+    Compilation
+    Synopsis
+    Description
+    Options
+    Environment
+    Details
+    Diagnostics
+    Examples
+    Limitations
+    Bugs
+
+
+File List
+
+    The Par 3.20 package is always distributed with at least the following
+    files:
+
+        buffer.h
+        buffer.c
+        failf.h
+        failf.c
+        par.1
+        par.c
+        par.doc
+        protoMakefile
+        reformat.h
+        reformat.c
+
+    Each file is a text file which identifies itself on the second line, and
+    identifies the version of Par to which it belongs on the third line,
+    so you can always tell which file is which even if the files have been
+    renamed.
+
+    The file "par.1" is a man page for the filter par (not to be confused
+    with the package Par, which contains the source code for par). "par.1"
+    is based on this doc file, and conveys much (not all) of the same
+    information, but "par.doc" is the definitive documentation for both par
+    and Par.
+
+
+Rights and Responsibilities
+
+    The files listed in the Files List section above are each Copyright 1993
+    by Adam M. Costello (henceforth "I").
+
+    I grant everyone permission to use these files in any way, subject to
+    the following two restrictions:
+
+     1) No one may distribute modifications of any of the files unless I am
+        the one who modified them.
+
+     2) No one may distribute any one of the files unless it is accompanied
+        by all of the other files.
+
+    I cannot disallow the distribution of patches, but I would prefer that
+    users send me suggestions for changes so that I can incorporate them
+    into future versions of Par. See the Bugs section for my addresses.
+
+    Though I have tried to make sure that Par is free of bugs, I make no
+    guarantees about its soundness. Therefore, I am not responsible for any
+    damage resulting from the use of these files.
+
+
+Compilation
+
+    To compile par, you need an ANSI C compiler. Copy protoMakefile to
+    Makefile and edit it, following the instructions in the comments. Then
+    use make (or the equivalent on your system) to compile par.
+
+    If you have no make, compile each .c file into an object file and link
+    all the object files together by whatever method works on your system.
+    Then go look for a version of make that works on your system, since it
+    will come in handy in the future.
+
+    If your compiler warns you about a pointer to a constant being converted
+    to a pointer to a non-constant in line 289 of reformat.c, ignore it.
+    Your compiler (like mine) is in error. What it thinks is a pointer to
+    a constant is actually a pointer to a pointer to a constant, which is
+    something quite different. The conversion is legal, and a true ANSI C
+    compiler wouldn't complain.
+
+    If your compiler generates any other warnings that you think are
+    legitimate, please tell me about them (see the Bugs section).
+
+
+Synopsis
+
+    par [w<width>] [p<prefix>] [s<suffix>] [h[<hang>]] [l[<last>]]
+        [m[<min>]] [version]
+
+    Things enclosed in [square brackets] are optional. Things enclosed in
+    <angle brackets> are variables.
+
+    Any option may be immediately preceeded by a minus sign (-).
+
+
+Description
+
+    par is a filter which copies its input to its output, reformatting each
+    paragraph. Paragraphs are delimited by blank lines.
+
+    Each output paragraph is generated from the corresponding input lines as
+    follows:
+
+     1. An optional prefix and/or suffix is removed from each input line.
+     2. The remainder is divided into words (delimited by white space).
+     3. The words are joined into lines to make an eye-pleasing paragraph.
+     4. The prefixes and suffixes are reattached.
+
+
+Options
+
+    All options except version are used to set values of variables. Values
+    set by command line options hold for all paragraphs in the input. Unset
+    variables are given default values which are recomputed separately for
+    each paragraph.
+
+    The approximate role of each variable is described here. See the
+    Details section for a much more complete and precise description.
+
+    w<width>   Sets the value of <width>, the maximum width of the output
+               paragraph, in characters, not including the trailing newline
+               characters. Must be an unsigned decimal integer greater than
+               <prefix> (see below). Defaults to 72. If <width> is 9 or
+               more, the w is not needed.
+
+    p<prefix>  Sets the value of <prefix>, the length of the prefix, in
+               characters. Must be an unsigned decimal integer. Defaults to
+               0 if there are no more than <hang> + 1 lines in the input
+               paragraph (see the h option). Otherwise defaults to the
+               length of the longest common prefix of all lines in the
+               input paragraph except the first <hang> of them. The first
+               <prefix> characters of each output line are copied from the
+               first <prefix> characters of the corresponding input line. If
+               <prefix> is 8 or less, the p is not needed.
+
+    s<suffix>  Sets the value of <suffix>, the length of the suffix, in
+               characters. Must be an unsigned decimal integer. Defaults to
+               0 if there is no more than 1 line in the input paragraph.
+               Otherwise defaults to the length of the longest common suffix
+               of all lines in the input paragraph, after this common suffix
+               has been stripped of all initial white characters save the
+               last. The last <suffix> characters of each output line are
+               copied from the last <suffix> characters of the corresponding
+               input line.
+
+    h[<hang>]  Sets the value of <hang>. Must be an unsigned decimal
+               integer. Defaults to 0. Mainly affects the default value of
+               <prefix> (see the p option). If the h option is given without
+               a number, the value 1 is assumed.
+
+    l[<last>]  Sets the value of <last>. Must be 0 or 1. Defaults to 0. If
+               <last> is 1, par tries to make the last line of the output
+               paragraph about the same length as the others. If the l
+               option is given without a number, the value 1 is assumed.
+
+    m[<min>]   Sets the value of <min>. Must be 0 or 1. Defaults to <last>.
+               If <min> is 1, par will try to make the paragraph narrower
+               without shortening the shortest line. If the m option is
+               given without a number, the value 1 is assumed.
+
+    version    Causes all other options to be ignored. No input is read.
+               "par 3.20" is printed on the output. Of course, this will
+               change in future releases of Par.
+
+    If the value of any variable is set more than once, the last value is
+    used. For each paragraph, default values for any variables not set by
+    command line options are computed in the following order:
+
+        <width> <hang> <last> <min> <prefix> <suffix>
+
+    No integer appearing in an option may exceed 9999.
+
+    It is an error if <width> <= <prefix> + <suffix>.
+
+
+Environment
+
+    If the environment variable PARINIT is set, par will read command line
+    options from it before it reads them from the command line.
+
+
+Details
+
+    The white characters are the space, formfeed, newline, carriage return,
+    tab, and vertical tab.
+
+    Lines are terminated by newline characters, but the newlines are not
+    considered to be included in the lines. If the last character of the
+    input is a non-newline, then a newline will be inferred immediately
+    after it (but if the input is empty, no newline will be inferred; the
+    number of input lines will be 0). Thus, the input can always be viewed
+    as a sequence of lines.
+
+    A line is called blank if and only if it contains no non-white
+    characters. A subsequence of non-blank lines is called maximal if and
+    only if there is no non-blank line immediately before or after it.
+
+    The process described in the remainder of this section is applied
+    independently to each maximal subsequence of non-blank input lines.
+    (Each blank line of the input is transformed into an empty line on the
+    output).
+
+    After the values of the variables are determined (see the Options
+    section), the first <prefix> characters and the last <suffix> characters
+    of each input line are removed and remembered. It is an error for any
+    line to contain fewer than <prefix> + <suffix> characters.
+
+    The remaining text is treated as a sequence of characters, not lines.
+    The text is broken into words, which are delimited by white characters.
+    That is, a word is a maximal sub-sequence of non-white characters. If
+    there is at least one word, and the first word is preceeded only by
+    spaces (strictly spaces, not other white characters), then the first
+    word is expanded to include those spaces.
+
+    Let <L> = <width> - <prefix> - <suffix>.
+
+    Every word which contains more than <L> characters is broken, after each
+    <L>th character, into multiple words.
+
+    These words are reassembled, preserving their order, into lines.
+    Adjacent words within a line are separated by a single space.
+
+    If all the words fit on a single line of no more than <L> characters,
+    then no line breaks are inserted. Otherwise, line breaks are placed in
+    such a way that the resulting paragraph satisfies certain properties. If
+    <min> is 1, those properties are:
+
+     1. No line contains more than <L> characters.
+
+     2. The shortest line is as long as possible, subject to 1.
+
+     3. The longest line is as short as possible, subject to properties 1
+        and 2. Call its length <newL>.
+
+     4. The sum of the squares of the differences between <newL> and the
+        lengths of the lines is as small as possible, subject to properties
+        1, 2, and 3.
+
+    If <last> is 0, then the last line does not count as a line for the
+    purposes of properties 2 and 4 above.
+
+    If <min> is 0, then property 3 is disregarded, and <newL> is set equal
+    to <L>.
+
+    If the number of lines in the resultant paragraph is less than <hang>,
+    then empty lines are added at the end to bring the number of lines up to
+    <hang>.
+
+    If <suffix> is not 0, then each line is padded at the end with spaces to
+    bring its length up to <newL>.
+
+    To each line is prepended <prefix> characters. Let <n> be the number of
+    input lines. The characters which are prepended to the <i>th line are
+    chosen as follows:
+
+     1. If <i> <= <n>, then the characters are copied from the ones that
+        were removed from the beginning of the <n>th input line.
+
+     2. If <i> > <n> > <hang>, then the characters are copied from the ones
+        that were removed from the beginning of the last input line.
+
+     3. If <i> > <n> and <n> <= <hang>, then the characters are all spaces.
+
+    Then to each line is appended <suffix> characters. The characters which
+    are appended to the <i>th line are chosen as follows:
+
+     1. If <i> <= <n>, then the characters are copied from the ones that
+        were removed from the end of the nth input line.
+
+     2. If <i> > <n> > 0, then the characters are copied from the ones that
+        were removed from the end of the last input line.
+
+     3. If <n> = 0, then the characters are all spaces.
+
+    Finally, the lines are printed to the output.
+
+
+Diagnostics
+
+    If there are no errors, par returns EXIT_SUCCESS (see <stdlib.h>).
+
+    If there is an error, then an error message will be printed to the
+    output, and par will return EXIT_FAILURE. If the error is local to a
+    single paragraph, then the preceeding paragraphs will have been output
+    before the error was detected. Line numbers in error messages are local
+    to the input paragraph in which the error occurred.
+
+    Of course, trying to print an error message would be futile if an error
+    resulted from an output function, so par doesn't bother doing any error
+    checking on output functions.
+
+
+Examples
+
+    The superiority of par's dynamic programming algorithm over a greedy
+    algorithm (such as the one used by fmt) can be seen in the following
+    example:
+
+    Original paragraph:
+
+        We hold these truths to be self evident,
+        that all men are created equal,
+        that they are endowed by their creator
+        with certain unalienable rights,
+        that among these are
+        life, liberty, and the
+        pursuit of happiness.
+
+    After a greedy algorithm with width = 61:
+
+        We hold these truths to be self evident, that all men
+        are created equal, that they are endowed by their
+        creator with certain unalienable rights, that among
+        these are life, liberty, and the pursuit of
+        happiness.
+
+    After "par 61":
+
+        We hold these truths to be self evident, that all
+        men are created equal, that they are endowed by
+        their creator with certain unalienable rights, that
+        among these are life, liberty, and the pursuit of
+        happiness.
+
+    The line breaks chosen by par are clearly more pleasing.
+
+    I use par in conjunction with the !} command of the vi editor. Other
+    editors probably provide a similar feature for filtering text.
+
+    The rest of this section is a series of before-and-after pictures
+    showing some typical uses of par.
+
+    Before:
+
+          Four score and seven years ago, our fathers brought
+        forth on this continent
+        a new nation.
+
+    After "par 42":
+
+          Four score and seven years ago,
+        our fathers brought forth on this
+        continent a new nation.
+
+    Before:
+
+        /* Four score and seven years */
+        /* ago, our */
+        /* fathers brought forth on this continent */
+        /* a new nation. */
+
+    After "par 42":
+
+        /* Four score and seven years   */
+        /* ago, our fathers brought     */
+        /* forth on this continent a    */
+        /* new nation.                  */
+
+    Or after "par l 42":
+
+        /* Four score and seven    */
+        /* years ago, our fathers  */
+        /* brought forth on this   */
+        /* continent a new nation. */
+
+    Or after "par l 42 m0":
+
+        /* Four score and seven         */
+        /* years ago, our fathers       */
+        /* brought forth on this        */
+        /* continent a new nation.      */
+
+    Before:
+
+        Gettysburg Address: Four score
+                            and seven years ago,
+                            our fathers brought forth on
+                            this continent
+                            a new nation.
+
+    After "par h 56":
+
+        Gettysburg Address: Four score and seven years
+                            ago, our fathers brought
+                            forth on this continent a
+                            new nation.
+
+    Before:
+
+        1  Four score and
+        2  seven years ago,
+        3  our fathers brought
+        4  forth on this continent
+        5  a new nation.
+
+    After "par p11 44":
+
+        1  Four score and seven years ago,
+        2  our fathers brought forth on this
+        3  continent a new nation.
+
+
+Limitations
+
+    If you like two spaces between sentences, too bad. Differentiating
+    between periods that end sentences and periods used in abbreviations is
+    a complex problem beyond the scope of this simple filter. Consider the
+    following tough case:
+
+        I calc'd the approx.
+        Fermi level to 3 sig. digits.
+
+    Suppose that that should be reformatted to:
+
+        I calc'd the approx. Fermi
+        level to three sig. digits.
+
+    The program has to decide whether to put 1 or 2 spaces between "approx."
+    and "Fermi". There is no obvious hint from the original paragraph
+    because there was a line break between them, and "Fermi" begins with a
+    capital letter. The program would apparently have to understand English
+    grammar to determine that the sentence does not end there (and then it
+    would only work for English text).
+
+    If you use tabs, you probably won't like the way par handles (or doesn't
+    handle) them. It treats them just like spaces. I didn't bother trying
+    to make sense of tabs because they don't make sense to begin with. Not
+    everyone's terminal has the same tab settings, so text files containing
+    tabs are sometimes mangled. In fact, almost every text file containing
+    tabs gets mangled when something is inserted at the beginning of each
+    line (when quoting e-mail or commenting out a section of a shell script,
+    for example), making them a pain to edit. In my opinion, the world would
+    be a nicer place if everyone stopped using tabs (so I'm doing my part by
+    not supporting them in par.)
+
+    There is currently no way for the length of the output prefix to differ
+    from the length of the input prefix. Ditto for the suffix. I may
+    consider adding this capability in a future release, but right now I'm
+    not sure how I'd want it to work.
+
+
+Bugs
+
+    If I knew of any bugs, I wouldn't have released the package. Of course,
+    there may be bugs that I haven't yet discovered.
+
+    If you find any bugs, or if you have any suggestions, please send e-mail
+    to:
+
+        amc@wuecl.wustl.edu
+
+    or send paper mail to:
+
+        Adam M. Costello
+        Campus Box 1045
+        Washington University
+        One Brookings Dr.
+        St. Louis, MO 63130
+        USA
+
+    Note that both addresses could change anytime after June 1994.
+
+    When reporting a bug, please include the exact input and command line
+    options used, and the version number of par, so that I can reproduce it.
