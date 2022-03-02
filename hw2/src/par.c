@@ -213,6 +213,7 @@ static void setdefaults(
   numlines = line - inlines;
 
   if (*pprefix < 0)
+  {
     if (numlines <= *phang + 1)
       *pprefix = 0;
     else {
@@ -224,8 +225,10 @@ static void setdefaults(
       }
       *pprefix = end - start;
     }
+  }
 
   if (*psuffix < 0)
+  {
     if (numlines <= 1)
       *psuffix = 0;
     else {
@@ -241,6 +244,7 @@ static void setdefaults(
       while (end - start >= 2 && isspace(*start) && isspace(start[1])) ++start;
       *psuffix = end - start;
     }
+  }
 }
 
 
@@ -257,7 +261,7 @@ static void freelines(char **lines)
 }
 
 
-main(int argc, const char * const *argv)
+int original_main(int argc, const char * const *argv)
 {
   int width, widthbak = -1, prefix, prefixbak = -1, suffix, suffixbak = -1,
       hang, hangbak = -1, last, lastbak = -1, min, minbak = -1, c;
@@ -333,8 +337,8 @@ parcleanup:
 
   if (*errmsg) {
     fprintf(stderr, "%.163s", errmsg);
-    exit(EXIT_FAILURE);
+    return(EXIT_FAILURE);
   }
 
-  exit(EXIT_SUCCESS);
+  return(EXIT_SUCCESS);
 }
