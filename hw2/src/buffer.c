@@ -67,6 +67,7 @@ struct buffer *newbuffer(size_t itemsize)
   blk->numprevious = blk->numhere = 0;
   blk->maxhere = maxhere;
   blk->items = items;
+  blk->next = NULL;
 
   *errmsg = '\0';
   return buf;
