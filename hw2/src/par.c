@@ -181,12 +181,14 @@ rlcleanup:
 
   if (cbuf) freebuffer(cbuf);
   if (pbuf) {
-    if (!lines)
+    if (!lines) {
       for (;;) {
         lines = nextitem(pbuf);
         if (!lines) break;
         free(*lines);
       }
+    }
+    freebuffer(pbuf);
   }
 
   return lines;
