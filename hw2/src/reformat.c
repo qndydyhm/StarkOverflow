@@ -159,7 +159,7 @@ char **reformat(const char * const *inlines, int width,
 {
   int numin, numout, affix, L, linelen, newL;
   const char * const *line, **suffixes = NULL, **suf, *end, *p1, *p2;
-  char *q1, *q2, **outlines;
+  char *q1, *q2, **outlines = NULL;
   struct word dummy, *head, *tail, *w1, *w2;
   struct buffer *pbuf = NULL;
 
