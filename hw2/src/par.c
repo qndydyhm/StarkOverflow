@@ -252,10 +252,10 @@ static void freelines(char **lines)
 /* Frees the strings pointed to in the NULL-terminated array lines, then */
 /* frees the array. Does not use errmsg because it always succeeds.      */
 {
-  char *line;
+  char **line;
 
-  for (line = *lines;  *line;  ++line)
-    free(line);
+  for (line = lines;  *line;  ++line)
+    free(*line);
 
   free(lines);
 }
