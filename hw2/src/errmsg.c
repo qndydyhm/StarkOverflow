@@ -9,8 +9,35 @@
 
 
 #include "errmsg.h"  /* Makes sure we're consistent with the declarations. */
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+#include <stdlib.h>
 
+static char *errmsg = NULL;
 
-char errmsg[163];
+void set_error(char *msg)
+{
+    errmsg = strdup(msg);
+}
 
-const char * const outofmem = "Out of memory.\n";
+int is_error() {
+    return errmsg ? 1 : 0;
+}
+
+int report_error(FILE *file) {
+    if (is_error())
+    {
+        return fputs(errmsg, file) < 0 ? 1 : 0;
+    }
+    return 0;
+}
+
+void clear_error() {
+    if (is_error())
+    {
+        free(errmsg);
+        errmsg = NULL;
+    }
+}
+static char *outofmem = "Out of memory.\n";

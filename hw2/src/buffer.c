@@ -57,7 +57,7 @@ struct buffer *newbuffer(size_t itemsize)
   blk = (struct block *) malloc(sizeof (struct block));
   items = malloc(maxhere * itemsize);
   if (!buf || !blk || !items) {
-    strcpy(errmsg,outofmem);
+    set_error(outofmem);
     goto nberror;
   }
 
@@ -69,7 +69,7 @@ struct buffer *newbuffer(size_t itemsize)
   blk->items = items;
   blk->next = NULL;
 
-  *errmsg = '\0';
+  clear_error();
   return buf;
 
   nberror:
@@ -123,7 +123,7 @@ void additem(struct buffer *buf, const void *item)
       new = (struct block * ) malloc(sizeof (struct block));
       items = malloc(maxhere * itemsize);
       if (!new || !items) {
-        strcpy(errmsg,outofmem);
+        set_error(outofmem);
         goto aierror;
       }
       blk->next = new;
@@ -140,7 +140,7 @@ void additem(struct buffer *buf, const void *item)
 
   ++blk->numhere;
 
-  *errmsg = '\0';
+  clear_error();
   return;
 
   aierror:
@@ -169,7 +169,7 @@ void *copyitems(struct buffer *buf)
 
   r = malloc(n * itemsize);
   if (!r) {
-    strcpy(errmsg,outofmem);
+    set_error(outofmem);
     return NULL;
   }
 
@@ -179,7 +179,7 @@ void *copyitems(struct buffer *buf)
     memcpy( ((char *) r) + (blk->numprevious * itemsize),
             blk->items, blk->numhere * itemsize);
 
-  *errmsg = '\0';
+  clear_error();
   return r;
 }
 

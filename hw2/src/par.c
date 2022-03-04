@@ -80,11 +80,19 @@ static void parseopt(
   const char *saveopt = opt;
   char oc;
   int n, r;
+  FILE *stream;
+  char *buf;
+  size_t len;
 
   if (*opt == '-') ++opt;
 
   if (!strcmp(opt, "version")) {
-    sprintf(errmsg, "%s %s\n", progname, version);
+    stream = open_memstream(&buf, &len);
+    fprintf(stream, "%s %s\n", progname, version);
+    fflush (stream);
+    set_error(buf);
+    fclose (stream);
+    free (buf);
     return;
   }
 
@@ -115,11 +123,16 @@ static void parseopt(
     else goto badopt;
   }
 
-  *errmsg = '\0';
+  clear_error();
   return;
 
 badopt:
-  sprintf(errmsg, "Bad option: %.149s\n", saveopt);
+  stream = open_memstream(&buf, &len);
+  fprintf(stream,"Bad option: %.149s\n", saveopt);
+  fflush (stream);
+  set_error(buf);
+  fclose (stream);
+  free (buf);
 }
 
 
@@ -135,9 +148,9 @@ static char **readlines(void)
   char ch, *ln, *nullline = NULL, nullchar = '\0', **lines = NULL;
 
   cbuf = newbuffer(sizeof (char));
-  if (*errmsg) goto rlcleanup;
+  if (is_error()) goto rlcleanup;
   pbuf = newbuffer(sizeof (char *));
-  if (*errmsg) goto rlcleanup;
+  if (is_error()) goto rlcleanup;
 
   for (blank = 1;  ; ) {
     c = getchar();
@@ -148,11 +161,11 @@ static char **readlines(void)
         break;
       }
       additem(cbuf, &nullchar);
-      if (*errmsg) goto rlcleanup;
+      if (is_error()) goto rlcleanup;
       ln = copyitems(cbuf);
-      if (*errmsg) goto rlcleanup;
+      if (is_error()) goto rlcleanup;
       additem(pbuf, &ln);
-      if (*errmsg) goto rlcleanup;
+      if (is_error()) goto rlcleanup;
       clearbuffer(cbuf);
       blank = 1;
     }
@@ -160,21 +173,21 @@ static char **readlines(void)
       if (!isspace(c)) blank = 0;
       ch = c;
       additem(cbuf, &ch);
-      if (*errmsg) goto rlcleanup;
+      if (is_error()) goto rlcleanup;
     }
   }
 
   if (!blank) {
     additem(cbuf, &nullchar);
-    if (*errmsg) goto rlcleanup;
+    if (is_error()) goto rlcleanup;
     ln = copyitems(cbuf);
-    if (*errmsg) goto rlcleanup;
+    if (is_error()) goto rlcleanup;
     additem(pbuf, &ln);
-    if (*errmsg) goto rlcleanup;
+    if (is_error()) goto rlcleanup;
   }
 
   additem(pbuf, &nullline);
-  if (*errmsg) goto rlcleanup;
+  if (is_error()) goto rlcleanup;
   lines = copyitems(pbuf);
 
 rlcleanup:
@@ -275,7 +288,7 @@ int original_main(int argc, const char * const *argv)
   if (parinit) {
     picopy = malloc((strlen(parinit) + 1) * sizeof (char));
     if (!picopy) {
-      strcpy(errmsg,outofmem);
+      set_error(outofmem);
       goto parcleanup;
     }
     strcpy(picopy,parinit);
@@ -283,7 +296,7 @@ int original_main(int argc, const char * const *argv)
     while (opt) {
       parseopt(opt, &widthbak, &prefixbak,
                &suffixbak, &hangbak, &lastbak, &minbak);
-      if (*errmsg) goto parcleanup;
+      if (is_error()) goto parcleanup;
       opt = strtok(NULL,whitechars);
     }
     free(picopy);
@@ -293,7 +306,7 @@ int original_main(int argc, const char * const *argv)
   while (*++argv) {
     parseopt(*argv, &widthbak, &prefixbak,
              &suffixbak, &hangbak, &lastbak, &minbak);
-    if (*errmsg) goto parcleanup;
+    if (is_error()) goto parcleanup;
   }
 
   for (;;) {
@@ -306,7 +319,7 @@ int original_main(int argc, const char * const *argv)
     ungetc(c,stdin);
 
     inlines = readlines();
-    if (*errmsg) goto parcleanup;
+    if (is_error()) goto parcleanup;
     if (!*inlines) {
       free(inlines);
       inlines = NULL;
@@ -320,7 +333,7 @@ int original_main(int argc, const char * const *argv)
 
     outlines = reformat((const char * const *) inlines,
                         width, prefix, suffix, hang, last, min);
-    if (*errmsg) goto parcleanup;
+    if (is_error()) goto parcleanup;
 
     freelines(inlines);
     inlines = NULL;
@@ -338,8 +351,9 @@ parcleanup:
   if (inlines) freelines(inlines);
   if (outlines) freelines(outlines);
 
-  if (*errmsg) {
-    fprintf(stderr, "%.163s", errmsg);
+  if (is_error()) {
+    report_error(stderr);
+    clear_error();
     return(EXIT_FAILURE);
   }
 
