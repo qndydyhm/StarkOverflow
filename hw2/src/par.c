@@ -392,7 +392,7 @@ static int setOptions(int argc,  char **argv, int *widthbak, int *prefixbak, int
       set_error(buf);
       fclose(stream);
       free(buf);
-      return 0;
+      return 2;
       break;
     case 'W':
       if (!setValue(widthbak, optarg, "width"))
@@ -538,7 +538,8 @@ int original_main(int argc, const char *const *argv)
   //     goto parcleanup;
   //   freelines(argv_env);
   // }
-  if (!setOptions(argc, (char **)argv, &widthbak, &prefixbak, &suffixbak, &hangbak, &lastbak, &minbak))
+  int option_code = setOptions(argc, (char **)argv, &widthbak, &prefixbak, &suffixbak, &hangbak, &lastbak, &minbak);
+  if (option_code == 0 || option_code==2)
     goto parcleanup;
 
   // printf("width: %d, prefix: %d, suffix: %d, hang: %d, last: %d, min: %d", widthbak, prefixbak, suffixbak, hangbak, lastbak, minbak);
@@ -603,6 +604,11 @@ parcleanup:
   {
     report_error(stderr);
     clear_error();
+    if (option_code == 2)
+    {
+      return EXIT_SUCCESS;
+    }
+    
     return (EXIT_FAILURE);
   }
 
