@@ -18,6 +18,7 @@ static char *errmsg = NULL;
 
 void set_error(char *msg)
 {
+    clear_error();
     errmsg = strdup(msg);
 }
 
