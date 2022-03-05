@@ -362,7 +362,7 @@ static int setValue(int *val, char *arg, char *name)
   return 1;
 }
 
-static int setOptions(int argc,  char **argv, int *widthbak, int *prefixbak, int *suffixbak, int * hangbak, int *lastbak, int *minbak)
+static int setOptions(int argc, char **argv, int *widthbak, int *prefixbak, int *suffixbak, int *hangbak, int *lastbak, int *minbak)
 {
   FILE *stream;
   char *buf;
@@ -472,75 +472,91 @@ static int setOptions(int argc,  char **argv, int *widthbak, int *prefixbak, int
 int original_main(int argc, const char *const *argv)
 {
   int width, widthbak = -1, prefix, prefixbak = -1, suffix, suffixbak = -1,
-             hang, hangbak = -1, last, lastbak = -1, min, minbak = -1, c, argc_env;
+             hang, hangbak = -1, last, lastbak = -1, min, minbak = -1, c, argc_env, option_code;
   char *parinit, *picopy = NULL, *opt, **inlines = NULL, **outlines = NULL,
-                 **line, **argv_env, *tmp;
+                 **line, **argv_env = NULL, *tmp;
   const char *const whitechars = " \f\n\r\t\v";
 
   // parinit = getenv("PARINIT");
-  // if (parinit) {
-  //   picopy = malloc((strlen(parinit) + 1) * sizeof (char));
-  //   if (!picopy) {
+  // if (parinit)
+  // {
+  //   picopy = malloc((strlen(parinit) + 1) * sizeof(char));
+  //   if (!picopy)
+  //   {
   //     set_error(outofmem);
   //     goto parcleanup;
   //   }
-  //   strcpy(picopy,parinit);
-  //   opt = strtok(picopy,whitechars);
-  //   while (opt) {
+  //   strcpy(picopy, parinit);
+  //   opt = strtok(picopy, whitechars);
+  //   while (opt)
+  //   {
   //     parseopt(opt, &widthbak, &prefixbak,
   //              &suffixbak, &hangbak, &lastbak, &minbak);
-  //     if (is_error()) goto parcleanup;
-  //     opt = strtok(NULL,whitechars);
+  //     if (is_error())
+  //       goto parcleanup;
+  //     opt = strtok(NULL, whitechars);
   //   }
   //   free(picopy);
   //   picopy = NULL;
   // }
 
-  // while (*++argv) {
+  // while (*++argv)
+  // {
   //   parseopt(*argv, &widthbak, &prefixbak,
   //            &suffixbak, &hangbak, &lastbak, &minbak);
-  //   if (is_error()) goto parcleanup;
+  //   if (is_error())
+  //     goto parcleanup;
   // }
 
-  // parinit = getenv("PARINIT");
-  // if (parinit)
-  // {
-  //   picopy = malloc((strlen(parinit) + 1) * sizeof (char));
-  //   if (!picopy) {
-  //     set_error(outofmem);
-  //     goto parcleanup;
-  //   }
-  //   argc_env = 1;
-  //   argv_env = malloc((argc_env) * sizeof (char*));
-  //   argv_env[0] = malloc((strlen(argv[0])+1) * sizeof(char));
-  //   tmp = argv_env[0];
-  //   strcpy(tmp, argv[0]);
-  //   strcpy(picopy,parinit);
-  //   opt = strtok(picopy,whitechars);
-  //   while (opt) {
-  //     argc_env ++;
-  //     argv_env = realloc(argv_env, (argc_env + 1)*sizeof(char*));
-  //     argv_env[argc_env-1] = malloc((strlen(opt)+1)*sizeof(char));
-  //     tmp = argv_env[argc_env-1];
-  //     strcpy(tmp, opt);
-  //     opt = strtok(NULL,whitechars);
-  //   }
-  //   argv_env = realloc(argv_env, (argc_env + 1)*sizeof(char*));
-  //   argv_env[argc_env] = NULL;
+  parinit = getenv("PARINIT");
+  if (parinit)
+  {
+    picopy = malloc((strlen(parinit) + 1) * sizeof(char));
+    if (!picopy)
+    {
+      set_error(outofmem);
+      goto parcleanup;
+    }
+    argc_env = 1;
+    argv_env = malloc((argc_env) * sizeof(char *));
+    argv_env[0] = malloc((strlen(argv[0]) + 1) * sizeof(char));
+    tmp = argv_env[0];
+    strcpy(tmp, argv[0]);
+    strcpy(picopy, parinit);
+    opt = strtok(picopy, whitechars);
+    while (opt)
+    {
+      argc_env++;
+      argv_env = realloc(argv_env, (argc_env + 1) * sizeof(char *));
+      argv_env[argc_env - 1] = malloc((strlen(opt) + 1) * sizeof(char));
+      tmp = argv_env[argc_env - 1];
+      strcpy(tmp, opt);
+      opt = strtok(NULL, whitechars);
+    }
 
-  //   // for (size_t i = 0; i < argc_env; i++)
-  //   // {
-  //   //   printf("%s\n", argv_env[i]);
-  //   // }
+    for (size_t i = 1; i < argc; i++)
+    {
+      argc_env++;
+      argv_env = realloc(argv_env, (argc_env + 1) * sizeof(char *));
+      argv_env[argc_env - 1] = malloc((strlen(argv[i]) + 1) * sizeof(char));
+      tmp = argv_env[argc_env - 1];
+      strcpy(tmp, argv[i]);
+    }
+    argv_env = realloc(argv_env, (argc_env + 1) * sizeof(char *));
+    argv_env[argc_env] = NULL;
     
-
-  //   if (!setOptions(argc_env, (char **)argv_env, &widthbak, &prefixbak, &suffixbak, &hangbak, &lastbak, &minbak))
-  //     goto parcleanup;
-  //   freelines(argv_env);
-  // }
-  int option_code = setOptions(argc, (char **)argv, &widthbak, &prefixbak, &suffixbak, &hangbak, &lastbak, &minbak);
-  if (option_code == 0 || option_code==2)
-    goto parcleanup;
+    option_code = setOptions(argc_env, (char **)argv_env, &widthbak, &prefixbak, &suffixbak, &hangbak, &lastbak, &minbak);
+    if (option_code == 0 || option_code == 2)
+      goto parcleanup;
+    freelines(argv_env);
+    argv_env = NULL;
+  }
+  else
+  {
+    option_code = setOptions(argc, (char **)argv, &widthbak, &prefixbak, &suffixbak, &hangbak, &lastbak, &minbak);
+    if (option_code == 0 || option_code == 2)
+      goto parcleanup;
+  }
 
   // printf("width: %d, prefix: %d, suffix: %d, hang: %d, last: %d, min: %d", widthbak, prefixbak, suffixbak, hangbak, lastbak, minbak);
 
@@ -599,6 +615,8 @@ parcleanup:
     freelines(inlines);
   if (outlines)
     freelines(outlines);
+  if (argv_env)
+    freelines(argv_env);
 
   if (is_error())
   {
@@ -608,7 +626,7 @@ parcleanup:
     {
       return EXIT_SUCCESS;
     }
-    
+
     return (EXIT_FAILURE);
   }
 
