@@ -37,7 +37,7 @@ Test(base_suite, basic_test) {
  */
 Test(base_suite, prefix_suffix_test) {
     char *name = "prefix_suffix";
-    sprintf(program_options, "%s", "w80");
+    sprintf(program_options, "%s", "-w 80");
     int err = run_using_system(name, "", "", STANDARD_LIMITS);
     assert_expected_status(EXIT_SUCCESS, err);
     assert_outfile_matches(name, NULL);
@@ -62,7 +62,7 @@ Test(base_suite, valgrind_leak_test) {
  */
 Test(base_suite, valgrind_uninitialized_test) {
     char *name = "valgrind_uninitialized";
-    sprintf(program_options, "%s", "p10 s10");
+    sprintf(program_options, "%s", "-p 10 -s 10");
     int err = run_using_system(name, "", "valgrind --leak-check=no --undef-value-errors=yes --error-exitcode=37", STANDARD_LIMITS);
     assert_no_valgrind_errors(err);
     assert_expected_status(0x1, err);
