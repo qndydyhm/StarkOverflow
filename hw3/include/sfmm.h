@@ -311,19 +311,23 @@ void *sf_mem_grow();
 /*
  * @return The "magic number" used to obfuscate header and footer contents
  * to make it difficult to free a block without having first succesfully
- * malloc'ed one.  To obtain the ability to turn off obfuscation using the
- * -DWEAK_MAGIC compilation flag, you should not call this function directly
- * but rather use the preprocessor symbol MAGIC where the magic number is
- * required.
+ * malloc'ed one.
  */
 sf_header sf_magic();
 
-/* Define WEAK_MAGIC during compilation to use MAGIC of 0x0 for debugging purposes. */
-#ifndef WEAK_MAGIC
 #define MAGIC (sf_magic())
-#else
-#define MAGIC ((sf_header)0x0)
-#endif
+
+/*
+ * Set the "magic number" used to obfuscate header and footer contents.
+ * Setting the magic number to zero essentially turns off obfuscation, which will
+ * to make your life easier during debugging.  This function will be replaced
+ * by a dummy version during grading, so be sure to test your code without calling
+ * this function.
+ *
+ * @param magic  The value to set the magic number to.  Setting to 0x0 disables
+ * obfuscation.
+ */
+void sf_set_magic(sf_header magic);
 
 /*
  * Display the contents of the heap in a human-readable form.
