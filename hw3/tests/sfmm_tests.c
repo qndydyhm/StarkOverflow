@@ -130,8 +130,8 @@ Test(sfmm_basecode_suite, free_no_coalesce, .timeout = TEST_TIMEOUT) {
 
 	assert_quick_list_block_count(0, 0);
 	assert_free_block_count(0, 2);
-	assert_free_block_count(224, 1);
-	assert_free_block_count(688, 1);
+	assert_free_block_count(208, 1);
+	assert_free_block_count(704, 1);
 
 	cr_assert(sf_errno == 0, "sf_errno is not zero!");
 }
@@ -149,8 +149,8 @@ Test(sfmm_basecode_suite, free_coalesce, .timeout = TEST_TIMEOUT) {
 
 	assert_quick_list_block_count(0, 0);
 	assert_free_block_count(0, 2);
-	assert_free_block_count(368, 1);
-	assert_free_block_count(544, 1);
+	assert_free_block_count(384, 1);
+	assert_free_block_count(528, 1);
 
 	cr_assert(sf_errno == 0, "sf_errno is not zero!");
 }
@@ -170,8 +170,8 @@ Test(sfmm_basecode_suite, freelist, .timeout = TEST_TIMEOUT) {
 
 	assert_quick_list_block_count(0, 1);
 	assert_free_block_count(0, 3);
-	assert_free_block_count(224, 2);
-	assert_free_block_count(848, 1);
+	assert_free_block_count(208, 2);
+	assert_free_block_count(928, 1);
 
 	// First block in list should be the most recently freed block not in quick list.
 	int i = 3;
