@@ -85,7 +85,7 @@
     |         unused             |     block_size       | unused | alloc  |prv alloc|in qklst |
     |          (0)               |(4 LSB's implicitly 0)|  (0)   |  (0)   |  (0/1)  |   (0)   |
     |        (32 bits)           |      (28 bits)       | 1 bit  | 1 bit  |  1 bit  |  1 bit  |
-    +------------------------------------------------------------+--------+---------+---------+ <- (aligned)
+    +------------------------------------------------------------+--------+---------+---------+
 
     NOTE: For a free block, footer contents must always be identical to header contents.
     NOTE: The actual stored footer is obfuscated by bitwise XOR'ing with MAGIC.
