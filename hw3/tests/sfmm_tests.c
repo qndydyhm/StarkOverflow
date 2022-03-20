@@ -70,9 +70,9 @@ Test(sfmm_basecode_suite, malloc_an_int, .timeout = TEST_TIMEOUT) {
 
 	cr_assert(*x == 4, "sf_malloc failed to give proper space for an int!");
 	sf_block *bp = (sf_block *)((char *)x - 16);
-	cr_assert((bp->header >> 32) & 0xffffffff,
+	cr_assert((((bp->header ^ MAGIC) >> 32) & 0xffffffff) == sz,
 		  "Malloc'ed block payload size (%ld) not what was expected (%ld)!",
-		  (bp->header >> 32) & 0xffffffff, sz);
+		  (((bp->header ^ MAGIC) >> 32) & 0xffffffff), sz);
 
 	assert_quick_list_block_count(0, 0);
 	assert_free_block_count(0, 1);
