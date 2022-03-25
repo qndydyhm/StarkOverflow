@@ -37,6 +37,8 @@ sf_size_t get_size_of_index(sf_size_t index);
 sf_block *split_block(sf_block *block, size_t size);
 void valid_pointer(sf_block *pp);
 void release_block(sf_block *block);
+sf_block *get_prev_block(sf_block *block);
+sf_block *get_next_block(sf_block *block);
 
 void *sf_malloc(sf_size_t size)
 {
@@ -56,6 +58,7 @@ void *sf_malloc(sf_size_t size)
             sf_block *block = sf_quick_lists[index].first;
             sf_quick_lists[index].length -= 1;
             sf_quick_lists[index].first = block->body.links.next;
+            set_entire_header(block, size, get_block_size(block->header), 1, get_prv_alloc(block->header), 0);
             return block;
         }
 
@@ -71,7 +74,7 @@ void *sf_malloc(sf_size_t size)
             {
                 if (get_block_size(ptr->header) >= min_size)
                 {
-                    set_entire_header(ptr, size, get_block_size(ptr->header), 1, 0, 0);
+                    set_entire_header(ptr, size, get_block_size(ptr->header), 1, get_prv_alloc(ptr->header), 0);
                     return ptr->body.payload;
                 }
             }
@@ -84,22 +87,38 @@ void *sf_malloc(sf_size_t size)
                 {
                     sf_block *block = split_block(ptr, min_size);
                     sf_size_t block_size = get_block_size(block->header);
-                    set_entire_header(block, size, block_size, 1, 0, 0);
-                    sf_show_block(block);
-                    sf_show_block(ptr);
+                    set_entire_header(block, size, block_size, 1, get_prv_alloc(block->header), 0);
                     return block->body.payload;
                 }
             }
         }
     }
 
-    // TO BE IMPLEMENTED
-    return NULL;
+    sf_block *last = get_prev_block(epi);
+    if (get_alloc(last->header) == 1)
+        last = epi;
+    sf_size_t require_size = min_size - get_block_size(last->header);
+    size_t i = 0;
+    for (; i < require_size; i += 1024)
+    {
+        if (sf_mem_grow() == NULL)
+        {
+            sf_errno = ENOMEM;
+            return NULL;
+        }
+    }
+    set_entire_header(last, 0, (get_block_size(last->header) + i), 0, get_prv_alloc(last->header), 0);
+    sf_block *ptr = split_block(last, min_size);
+    put_block(last);
+    set_entire_header(ptr, size, get_block_size(ptr->header), 1, 0, 0);
+    epi = (sf_block *)(((intptr_t)sf_mem_end()) - 2 * sizeof(sf_header));
+
+    return ptr;
 }
 
 void sf_free(void *pp)
 {
-    sf_block *block = (sf_block *)(intptr_t)(pp - 2 * sizeof(sf_header));
+    sf_block *block = (sf_block *)(((intptr_t)pp) - 2 * sizeof(sf_header));
     valid_pointer(block);
 
     sf_size_t index = (get_block_size(block->header) - 32) / 16;
@@ -128,8 +147,29 @@ void sf_free(void *pp)
 
 void *sf_realloc(void *pp, sf_size_t rsize)
 {
-    // TO BE IMPLEMENTED
-    abort();
+    sf_block *block = (sf_block *)(((intptr_t)pp) - 2 * sizeof(sf_header));
+    valid_pointer(block);
+    sf_size_t size = get_block_size(block->header);
+    sf_size_t new_size = get_min_size(size);
+    if (new_size >= size)
+    {
+        sf_block *new = sf_malloc(rsize);
+        if (new == NULL)
+            return NULL;
+        memcpy(new->body.payload, block->body.payload, size);
+        sf_free(block);
+        return new->body.payload;
+    }
+    else
+    {
+        if (size - new_size < min)
+            return block->body.payload;
+        else {
+            sf_block *ptr = split_block(block, (size - new_size));
+            put_block(ptr);
+            return block->body.payload;
+        }
+    }
 }
 
 double sf_internal_fragmentation()
@@ -152,8 +192,8 @@ int sf_initialize()
         return 1;
     }
     pro = (sf_block *)sf_mem_start();
-    set_entire_header(pro, 0, 32, 1, 0, 0);
-    epi = (sf_block *)((intptr_t)sf_mem_end() - 2 * sizeof(sf_header));
+    set_entire_header(pro, 0, 32, 1, 1, 0);
+    epi = (sf_block *)(((intptr_t)sf_mem_end()) - 2 * sizeof(sf_header));
     set_entire_header(epi, 0, 0, 1, 1, 0);
     for (size_t i = 0; i < NUM_FREE_LISTS; i++)
     {
@@ -165,9 +205,10 @@ int sf_initialize()
         sf_quick_lists[i].length = 0;
         sf_quick_lists[i].first = NULL;
     }
-    sf_block *block = (sf_block *)((intptr_t)sf_mem_start() + 4 * sizeof(sf_header));
+    sf_block *block = get_next_block(pro);
     sf_size_t size = PAGE_SZ - 6 * sizeof(sf_header);
     set_entire_header(block, 0, size, 0, 1, 0);
+    block->prev_footer = pro->header;
     put_block(block);
     return 0;
 }
@@ -185,7 +226,7 @@ void set_header(sf_block *block, sf_header value)
     block->header = value;
     if (get_alloc(block->header) == 0)
     {
-        sf_block *next = (sf_block *)((intptr_t)block + get_block_size(block->header));
+        sf_block *next = get_next_block(block);
         next->prev_footer = block->header;
     }
 }
@@ -309,8 +350,8 @@ sf_block *split_block(sf_block *block, size_t size)
     size_t original_size = get_block_size(block->header);
     size_t new_size = original_size - size;
     set_block_size(block, new_size);
-    sf_block *ptr = (sf_block *)((intptr_t)block + get_block_size(block->header));
-    set_entire_header(ptr, 0, size, 0, 0, 0);
+    sf_block *ptr = get_next_block(block);
+    set_entire_header(ptr, 0, size, 0, get_prv_alloc(block->header), 0);
     ptr->prev_footer = block->header;
     return ptr;
 }
@@ -322,7 +363,7 @@ void valid_pointer(sf_block *pp)
     // pp->header ^= sf_magic();
     if (get_block_size(pp->header) < 32 || get_block_size(pp->header) % 16 != 0)
         abort();
-    if ((intptr_t)&pp->header < ((intptr_t)&pro->header + 32) || (intptr_t)&pp->header > ((intptr_t)&epi->header - 8))
+    if (((intptr_t)&pp->header) < (((intptr_t)&pro->header) + 32) || ((intptr_t)&pp->header) > (((intptr_t)&epi->header) - 8))
         abort();
     if (get_alloc(pp->header) == 0 || (get_prv_alloc(pp->header) == 0 && get_alloc(pp->prev_footer) != 0))
         abort();
@@ -331,16 +372,16 @@ void valid_pointer(sf_block *pp)
 
 void release_block(sf_block *block)
 {
-    sf_block *next = (sf_block *)((intptr_t)block + get_block_size(block->header));
-    sf_block *prev = (sf_block *)((intptr_t)block - get_block_size(block->prev_footer));
+    sf_block *next = get_next_block(block);
+    sf_block *prev = get_prev_block(block);
     sf_size_t total_size = get_block_size(block->header);
-    if (get_alloc(next->header) == 0)
+    if (next != epi && get_alloc(next->header) == 0)
     {
         next->body.links.prev->body.links.next = next->body.links.next;
         next->body.links.next->body.links.prev = next->body.links.prev;
         total_size += get_block_size(next->header);
     }
-    if (get_alloc(block->prev_footer) == 0)
+    if (prev != pro && get_alloc(prev->header) == 0)
     {
         prev->body.links.prev->body.links.next = prev->body.links.next;
         prev->body.links.next->body.links.prev = prev->body.links.prev;
@@ -350,4 +391,14 @@ void release_block(sf_block *block)
     set_entire_header(block, 0, total_size, 0, get_prv_alloc(block->header), 0);
     put_block(block);
     return;
+}
+
+sf_block *get_prev_block(sf_block *block)
+{
+    return (sf_block *)(((intptr_t)block) - get_block_size(block->prev_footer));
+}
+
+sf_block *get_next_block(sf_block *block)
+{
+    return (sf_block *)(((intptr_t)block) + get_block_size(block->header));
 }

@@ -3,16 +3,12 @@
 
 int main(int argc, char const *argv[]) {
     sf_set_magic(0x0);
-    double* ptr = sf_malloc(sizeof(double));
+    	size_t sz_x = 8, sz_y = 200, sz_z = 1;
+	/* void *x = */ sf_malloc(sz_x);
+	void *y = sf_malloc(sz_y);
+	/* void *z = */ sf_malloc(sz_z);
 
-    *ptr = 114514;
-
-    printf("%f\n", *ptr);
-
-    sf_free(ptr);
-
-    sf_show_heap();
-    sf_show_free_lists();
+	sf_free(y);
 
     return EXIT_SUCCESS;
 }
