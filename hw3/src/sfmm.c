@@ -140,6 +140,9 @@ void *sf_malloc(sf_size_t size)
     set_entire_header(last, size, get_block_size(last->header), 1, get_prv_alloc(last->header), 0, 0);
     set_entire_header(epi, 0, 0, 1, get_alloc(epi->prev_footer), 0, 1);
 
+    total_block_size += get_block_size(last->header);
+    add_payload(size);
+
     return last->body.payload;
 }
 
@@ -182,12 +185,15 @@ void *sf_realloc(void *pp, sf_size_t rsize)
     sf_size_t new_size = get_min_size(rsize);
     if (new_size > size)
     {
+        int payload = (int)get_payload_size(block->header);
+        add_payload(-1 * payload);
         sf_block *new;
         if ((new = sf_malloc(rsize)) == NULL)
             return NULL;
         new = (sf_block *)(((intptr_t) new) - 2 * sizeof(sf_header));
         memcpy(new->body.payload, block->body.payload, size);
         sf_free(pp);
+        add_payload(payload);
         return new->body.payload;
     }
     else
@@ -286,14 +292,14 @@ void set_header(sf_block *block, sf_header value)
         next->prev_footer = block->header;
         if ((prv_alloc & (sf_size_t)MAGIC) == 0)
             next->header = next->header & ~prv_alloc;
-        else 
+        else
             next->header = next->header | prv_alloc;
     }
     else
     {
         if ((prv_alloc & (sf_size_t)MAGIC) == 0)
             next->header = next->header | prv_alloc;
-        else 
+        else
             next->header = next->header & ~prv_alloc;
     }
 }

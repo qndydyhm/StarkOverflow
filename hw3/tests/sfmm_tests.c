@@ -95,6 +95,11 @@ Test(sfmm_basecode_suite, malloc_an_int, .timeout = TEST_TIMEOUT)
 
 	cr_assert(sf_errno == 0, "sf_errno is not zero!");
 	cr_assert(sf_mem_start() + PAGE_SZ == sf_mem_end(), "Allocated more than necessary!");
+
+	cr_assert_eq(sf_internal_fragmentation(), 4 / 32.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 4 / 32.0);
+	cr_assert_eq(sf_peak_utilization(), 4 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 4 / 1024.0);
 }
 
 Test(sfmm_basecode_suite, malloc_four_pages, .timeout = TEST_TIMEOUT)
@@ -106,6 +111,11 @@ Test(sfmm_basecode_suite, malloc_four_pages, .timeout = TEST_TIMEOUT)
 	assert_quick_list_block_count(0, 0);
 	assert_free_block_count(0, 0);
 	cr_assert(sf_errno == 0, "sf_errno is not 0!");
+
+	cr_assert_eq(sf_internal_fragmentation(), 4032 / 4048.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 4032 / 4048.0);
+	cr_assert_eq(sf_peak_utilization(), 4032 / 4096.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 4032 / 4096.0);
 }
 
 Test(sfmm_basecode_suite, malloc_too_large, .timeout = TEST_TIMEOUT)
@@ -135,6 +145,10 @@ Test(sfmm_basecode_suite, free_quick, .timeout = TEST_TIMEOUT)
 	assert_free_block_count(0, 1);
 	assert_free_block_count(864, 1);
 	cr_assert(sf_errno == 0, "sf_errno is not zero!");
+	cr_assert_eq(sf_internal_fragmentation(), 9 / 64.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 9 / 64.0);
+	cr_assert_eq(sf_peak_utilization(), 41 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 41 / 1024.0);
 }
 
 Test(sfmm_basecode_suite, free_no_coalesce, .timeout = TEST_TIMEOUT)
@@ -153,6 +167,10 @@ Test(sfmm_basecode_suite, free_no_coalesce, .timeout = TEST_TIMEOUT)
 	assert_free_block_count(704, 1);
 
 	cr_assert(sf_errno == 0, "sf_errno is not zero!");
+	cr_assert_eq(sf_internal_fragmentation(), 9 / 64.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 9 / 64.0);
+	cr_assert_eq(sf_peak_utilization(), 209 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 209 / 1024.0);
 }
 
 Test(sfmm_basecode_suite, free_coalesce, .timeout = TEST_TIMEOUT)
@@ -173,6 +191,10 @@ Test(sfmm_basecode_suite, free_coalesce, .timeout = TEST_TIMEOUT)
 	assert_free_block_count(528, 1);
 
 	cr_assert(sf_errno == 0, "sf_errno is not zero!");
+	cr_assert_eq(sf_internal_fragmentation(), 12 / 64.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 12 / 64.0);
+	cr_assert_eq(sf_peak_utilization(), 512 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 512 / 1024.0);
 }
 
 Test(sfmm_basecode_suite, freelist, .timeout = TEST_TIMEOUT)
@@ -200,6 +222,10 @@ Test(sfmm_basecode_suite, freelist, .timeout = TEST_TIMEOUT)
 	cr_assert_eq(&bp->header, (char *)y - 8,
 				 "Wrong first block in free list %d: (found=%p, exp=%p)",
 				 i, &bp->header, (char *)y - 8);
+	cr_assert_eq(sf_internal_fragmentation(), 550 / 592.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 550 / 592.0);
+	cr_assert_eq(sf_peak_utilization(), 1000 / 2048.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 1000 / 2048.0);
 }
 
 Test(sfmm_basecode_suite, realloc_larger_block, .timeout = TEST_TIMEOUT)
@@ -223,6 +249,12 @@ Test(sfmm_basecode_suite, realloc_larger_block, .timeout = TEST_TIMEOUT)
 	assert_quick_list_block_count(32, 1);
 	assert_free_block_count(0, 1);
 	assert_free_block_count(816, 1);
+
+	cr_assert_eq(sf_internal_fragmentation(), 90 / 128.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 90 / 128.0);
+	cr_assert_eq(sf_peak_utilization(), 90 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 90 / 1024.0);
+
 }
 
 Test(sfmm_basecode_suite, realloc_smaller_block_splinter, .timeout = TEST_TIMEOUT)
@@ -294,12 +326,12 @@ Test(sfmm_basecode_suite, quicklist1, .timeout = TEST_TIMEOUT)
 	void *x5 = sf_malloc(sz_x);
 	void *x6 = sf_malloc(sz_x);
 
-    sf_free(x1);
-    sf_free(x2);
-    sf_free(x3);
-    sf_free(x4);
-    sf_free(x5);
-    sf_free(x6);
+	sf_free(x1);
+	sf_free(x2);
+	sf_free(x3);
+	sf_free(x4);
+	sf_free(x5);
+	sf_free(x6);
 
 	assert_quick_list_block_count(0, 1);
 	assert_free_block_count(0, 2);
@@ -324,16 +356,15 @@ Test(sfmm_basecode_suite, quicklist2, .timeout = TEST_TIMEOUT)
 	void *x4 = sf_malloc(sz_x);
 	void *x5 = sf_malloc(sz_x);
 
-    sf_free(x5);
-    sf_free(x4);
-    sf_free(x3);
-    sf_free(x2);
-    sf_free(x1);
+	sf_free(x5);
+	sf_free(x4);
+	sf_free(x3);
+	sf_free(x2);
+	sf_free(x1);
 
 	assert_quick_list_block_count(0, 5);
 	assert_free_block_count(0, 1);
 	assert_free_block_count(816, 1);
-	
 
 	// First block in list should be the most recently freed block not in quick list.
 	int i = 0;
@@ -343,24 +374,26 @@ Test(sfmm_basecode_suite, quicklist2, .timeout = TEST_TIMEOUT)
 				 i, &bp->header, (char *)x1 - 8);
 }
 
-Test(sfmm_basecode_suite, realloc1, .timeout = TEST_TIMEOUT) {
-	char * x1 = sf_malloc(2000-8);
-	char * x2 = sf_malloc(10000-8);
+Test(sfmm_basecode_suite, realloc1, .timeout = TEST_TIMEOUT)
+{
+	char *x1 = sf_malloc(2000 - 8);
+	char *x2 = sf_malloc(10000 - 8);
 	sf_free(x1);
-	x2 = sf_realloc(x2, 12000-8);
+	x2 = sf_realloc(x2, 12000 - 8);
 	assert_quick_list_block_count(0, 0);
 	assert_free_block_count(0, 2);
 	assert_free_block_count(12000, 1);
 	assert_free_block_count(528, 1);
 }
 
-Test(sfmm_basecode_suite, realloc2, .timeout = TEST_TIMEOUT) {
-    int *x1 = sf_malloc(sizeof(int));
-    sf_malloc(sizeof(int));
-    *x1 = 114514;
-    int *x3 = sf_realloc(x1, sizeof(double));
-    x3 = sf_realloc(x1, sizeof(long));
-    x3 = sf_realloc(x1, 24000);
+Test(sfmm_basecode_suite, realloc2, .timeout = TEST_TIMEOUT)
+{
+	int *x1 = sf_malloc(sizeof(int));
+	sf_malloc(sizeof(int));
+	*x1 = 114514;
+	int *x3 = sf_realloc(x1, sizeof(double));
+	x3 = sf_realloc(x1, sizeof(long));
+	x3 = sf_realloc(x1, 24000);
 
 	assert_quick_list_block_count(0, 1);
 	assert_free_block_count(0, 1);
@@ -371,12 +404,14 @@ Test(sfmm_basecode_suite, realloc2, .timeout = TEST_TIMEOUT) {
 				 114514, (int)*x3);
 }
 
-Test(sfmm_basecode_suite, freepro, .signal=SIGABRT, .timeout = TEST_TIMEOUT) {
-    sf_malloc(sizeof(int));
+Test(sfmm_basecode_suite, freepro, .signal = SIGABRT, .timeout = TEST_TIMEOUT)
+{
+	sf_malloc(sizeof(int));
 	sf_free(sf_mem_start());
 }
 
-Test(sfmm_basecode_suite, freeepi, .signal=SIGABRT, .timeout = TEST_TIMEOUT) {
-    sf_malloc(sizeof(int));
+Test(sfmm_basecode_suite, freeepi, .signal = SIGABRT, .timeout = TEST_TIMEOUT)
+{
+	sf_malloc(sizeof(int));
 	sf_free(((void *)(intptr_t)sf_mem_end()) - 2 * sizeof(sf_header));
 }
