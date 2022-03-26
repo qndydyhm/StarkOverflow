@@ -15,10 +15,10 @@ static sf_block *epi;
 static sf_size_t in_qklst = 0x00000001;
 static sf_size_t prv_alloc = 0x00000002;
 static sf_size_t alloc = 0x00000004;
-// static sf_size_t total_payload = 0;
-// static sf_size_t max_payload = 0;
-// static sf_size_t total_block_size = 0;
-static sf_size_t total_pages = 0;
+static int total_payload = 0;
+static int max_payload = 0;
+static double total_block_size = 0;
+static double total_pages = 0;
 
 int sf_initialize();
 void set_header(sf_block *block, sf_header value);
@@ -46,10 +46,10 @@ sf_block *get_next_block(sf_block *block);
 void remove_list(sf_block *block);
 sf_size_t get_pow(sf_size_t pow);
 void xor_with_magic(sf_header *header);
+void add_payload(int size);
 
 void *sf_malloc(sf_size_t size)
 {
-
     if (size == 0)
         return NULL;
 
@@ -66,6 +66,8 @@ void *sf_malloc(sf_size_t size)
             sf_quick_lists[index].length -= 1;
             sf_quick_lists[index].first = block->body.links.next;
             set_entire_header(block, size, get_block_size(block->header), 1, get_prv_alloc(block->header), 0, 0);
+            total_block_size += get_block_size(block->header);
+            add_payload(size);
             return block->body.payload;
         }
 
@@ -82,6 +84,8 @@ void *sf_malloc(sf_size_t size)
                 if (get_block_size(ptr->header) >= min_size)
                 {
                     set_entire_header(ptr, size, get_block_size(ptr->header), 1, get_prv_alloc(ptr->header), 0, 0);
+                    total_block_size += get_block_size(ptr->header);
+                    add_payload(size);
                     return ptr->body.payload;
                 }
                 ptr = ptr->body.links.next;
@@ -99,6 +103,8 @@ void *sf_malloc(sf_size_t size)
                     set_entire_header(ptr, size, min_size, 1, get_prv_alloc(ptr->header), 0, 0);
                     set_entire_header(block, 0, block_size, 0, get_prv_alloc(block->header), 0, 0);
                     put_block(block);
+                    total_block_size += get_block_size(ptr->header);
+                    add_payload(size);
                     return ptr->body.payload;
                 }
                 ptr = ptr->body.links.next;
@@ -142,6 +148,8 @@ void sf_free(void *pp)
     sf_block *block = (sf_block *)(((intptr_t)pp) - 2 * sizeof(sf_header));
     valid_pointer(block);
 
+    total_block_size -= get_block_size(block->header);
+    add_payload(-1 * get_payload_size(block->header));
     sf_size_t index = (get_block_size(block->header) - 32) / 16;
     if (index < 10)
     {
@@ -177,16 +185,20 @@ void *sf_realloc(void *pp, sf_size_t rsize)
         sf_block *new;
         if ((new = sf_malloc(rsize)) == NULL)
             return NULL;
-        new = (sf_block *)(((intptr_t)new) - 2 * sizeof(sf_header));
+        new = (sf_block *)(((intptr_t) new) - 2 * sizeof(sf_header));
         memcpy(new->body.payload, block->body.payload, size);
         sf_free(pp);
         return new->body.payload;
     }
     else
     {
+        total_block_size -= get_block_size(block->header);
+        add_payload(-1 * get_payload_size(block->header));
         if (size - new_size < min)
         {
             set_entire_header(block, rsize, size, 1, get_prv_alloc(block->header), 0, 0);
+            total_block_size += get_block_size(block->header);
+            add_payload(rsize);
             return block->body.payload;
         }
         else
@@ -195,6 +207,8 @@ void *sf_realloc(void *pp, sf_size_t rsize)
             set_entire_header(block, rsize, new_size, 1, get_prv_alloc(block->header), 0, 0);
             set_entire_header(ptr, 0, get_block_size(ptr->header), 0, get_prv_alloc(ptr->header), 0, 0);
             release_block(ptr);
+            total_block_size += get_block_size(block->header);
+            add_payload(rsize);
             return block->body.payload;
         }
     }
@@ -202,14 +216,23 @@ void *sf_realloc(void *pp, sf_size_t rsize)
 
 double sf_internal_fragmentation()
 {
-    // TO BE IMPLEMENTED
-    abort();
+    if (total_payload == 0)
+        return 0.0;
+    return total_payload / total_block_size;
 }
 
 double sf_peak_utilization()
 {
-    // TO BE IMPLEMENTED
-    abort();
+    if (max_payload == 0)
+        return 0;
+    return max_payload / total_pages;
+}
+
+void add_payload(int size)
+{
+    total_payload += size;
+    if (total_payload > max_payload)
+        max_payload = (double)total_payload;
 }
 
 int sf_initialize()
