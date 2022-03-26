@@ -45,14 +45,12 @@ sf_block *get_prev_block(sf_block *block);
 sf_block *get_next_block(sf_block *block);
 void remove_list(sf_block *block);
 sf_size_t get_pow(sf_size_t pow);
-void xor_with_magic(sf_header *header);
 void add_payload(int size);
 
 void *sf_malloc(sf_size_t size)
 {
     if (size == 0)
         return NULL;
-
     if (sf_mem_start() == sf_mem_end())
         if (sf_initialize())
             return NULL;
@@ -291,16 +289,16 @@ void set_header(sf_block *block, sf_header value)
     {
         next->prev_footer = block->header;
         if ((prv_alloc & (sf_size_t)MAGIC) == 0)
-            next->header = next->header & ~prv_alloc;
+            next->header = next->header & ~((uint64_t)prv_alloc);
         else
-            next->header = next->header | prv_alloc;
+            next->header = next->header | (uint64_t)prv_alloc;
     }
     else
     {
         if ((prv_alloc & (sf_size_t)MAGIC) == 0)
-            next->header = next->header | prv_alloc;
+            next->header = next->header | (uint64_t)prv_alloc;
         else
-            next->header = next->header & ~prv_alloc;
+            next->header = next->header & ~((uint64_t)prv_alloc);
     }
 }
 
@@ -335,13 +333,9 @@ void set_alloc(sf_block *block, sf_size_t is_alloc)
     sf_header header = block->header ^ MAGIC;
     sf_header value = header;
     if (is_alloc)
-    {
-        value |= alloc;
-    }
+        value |= (uint64_t)alloc;
     else
-    {
         value &= (~((uint64_t)alloc));
-    }
     set_header(block, value);
 }
 
@@ -350,28 +344,19 @@ void set_prv_alloc(sf_block *block, sf_size_t is_prv_allc)
     sf_header header = block->header ^ MAGIC;
     sf_header value = header;
     if (is_prv_allc)
-    {
-        value |= prv_alloc;
-    }
+        value |= (uint64_t)prv_alloc;
     else
-    {
         value &= (~((uint64_t)prv_alloc));
-    }
     set_header(block, value);
 }
 
 void set_in_qklst(sf_block *block, sf_size_t is_in_qklst)
 {
-    sf_header header = block->header ^ MAGIC;
-    sf_header value = header;
+    sf_header value = block->header ^ MAGIC;
     if (is_in_qklst)
-    {
-        value |= in_qklst;
-    }
+        value |= (uint64_t)in_qklst;
     else
-    {
         value &= (~((uint64_t)in_qklst));
-    }
     set_header(block, value);
 }
 
@@ -500,9 +485,4 @@ void remove_list(sf_block *block)
 {
     block->body.links.next->body.links.prev = block->body.links.prev;
     block->body.links.prev->body.links.next = block->body.links.next;
-}
-
-void xor_with_magic(sf_header *header)
-{
-    *header ^= MAGIC;
 }

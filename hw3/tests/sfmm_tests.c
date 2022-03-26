@@ -254,7 +254,6 @@ Test(sfmm_basecode_suite, realloc_larger_block, .timeout = TEST_TIMEOUT)
 				 sf_internal_fragmentation(), 90 / 128.0);
 	cr_assert_eq(sf_peak_utilization(), 90 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
 				 sf_peak_utilization(), 90 / 1024.0);
-
 }
 
 Test(sfmm_basecode_suite, realloc_smaller_block_splinter, .timeout = TEST_TIMEOUT)
@@ -279,6 +278,10 @@ Test(sfmm_basecode_suite, realloc_smaller_block_splinter, .timeout = TEST_TIMEOU
 	assert_quick_list_block_count(0, 0);
 	assert_free_block_count(0, 1);
 	assert_free_block_count(880, 1);
+	cr_assert_eq(sf_internal_fragmentation(), 64 / 96.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 64 / 96.0);
+	cr_assert_eq(sf_peak_utilization(), 80 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 80 / 1024.0);
 }
 
 Test(sfmm_basecode_suite, realloc_smaller_block_free_block, .timeout = TEST_TIMEOUT)
@@ -305,6 +308,10 @@ Test(sfmm_basecode_suite, realloc_smaller_block_free_block, .timeout = TEST_TIME
 	assert_quick_list_block_count(0, 0);
 	assert_free_block_count(0, 1);
 	assert_free_block_count(944, 1);
+	cr_assert_eq(sf_internal_fragmentation(), 4 / 32.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 4 / 32.0);
+	cr_assert_eq(sf_peak_utilization(), 64 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 64 / 1024.0);
 }
 
 //############################################
@@ -344,6 +351,10 @@ Test(sfmm_basecode_suite, quicklist1, .timeout = TEST_TIMEOUT)
 	cr_assert_eq(&bp->header, (char *)x6 - 8,
 				 "Wrong first block in free list %d: (found=%p, exp=%p)",
 				 i, &bp->header, (char *)x6 - 8);
+	cr_assert_eq(sf_internal_fragmentation(), 0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 0);
+	cr_assert_eq(sf_peak_utilization(), 24 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 24 / 1024.0);
 }
 
 Test(sfmm_basecode_suite, quicklist2, .timeout = TEST_TIMEOUT)
@@ -372,6 +383,10 @@ Test(sfmm_basecode_suite, quicklist2, .timeout = TEST_TIMEOUT)
 	cr_assert_eq(&bp->header, (char *)x1 - 8,
 				 "Wrong first block in free list %d: (found=%p, exp=%p)",
 				 i, &bp->header, (char *)x1 - 8);
+	cr_assert_eq(sf_internal_fragmentation(), 0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), 0);
+	cr_assert_eq(sf_peak_utilization(), 20 / 1024.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), 20 / 1024.0);
 }
 
 Test(sfmm_basecode_suite, realloc1, .timeout = TEST_TIMEOUT)
@@ -384,6 +399,10 @@ Test(sfmm_basecode_suite, realloc1, .timeout = TEST_TIMEOUT)
 	assert_free_block_count(0, 2);
 	assert_free_block_count(12000, 1);
 	assert_free_block_count(528, 1);
+	cr_assert_eq(sf_internal_fragmentation(), (12000-8)/12000.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), (12000-8)/12000.0);
+	cr_assert_eq(sf_peak_utilization(), (12000-8) / 24576.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), (12000-8) / 24576.0);
 }
 
 Test(sfmm_basecode_suite, realloc2, .timeout = TEST_TIMEOUT)
@@ -402,6 +421,10 @@ Test(sfmm_basecode_suite, realloc2, .timeout = TEST_TIMEOUT)
 	cr_assert_eq(114514, (int)*x3,
 				 "Wrong value: (found=%d, exp=%d)",
 				 114514, (int)*x3);
+	cr_assert_eq(sf_internal_fragmentation(), (24004)/24048.0, "Wrong number of sf_internal_fragmentation(): (exp=%f, found=%f)",
+				 sf_internal_fragmentation(), (24004)/24048.0);
+	cr_assert_eq(sf_peak_utilization(), (24004) / 24576.0, "Wrong number of sf_peak_utilization(): (exp=%f, found=%f)",
+				 sf_peak_utilization(), (24004) / 24576.0);
 }
 
 Test(sfmm_basecode_suite, freepro, .signal = SIGABRT, .timeout = TEST_TIMEOUT)
