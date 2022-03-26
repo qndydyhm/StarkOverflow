@@ -92,6 +92,7 @@ void *sf_malloc(sf_size_t size)
                     // sf_show_block(block);
                     return block->body.payload;
                 }
+                ptr = ptr->body.links.next;
             }
         }
     }
@@ -121,7 +122,7 @@ void *sf_malloc(sf_size_t size)
 
     // sf_show_block(ptr);
     // sf_show_block(epi);
-    return ptr;
+    return ptr->body.payload;
 }
 
 void sf_free(void *pp)
