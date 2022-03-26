@@ -39,6 +39,8 @@ void valid_pointer(sf_block *pp);
 void release_block(sf_block *block);
 sf_block *get_prev_block(sf_block *block);
 sf_block *get_next_block(sf_block *block);
+void remove_list(sf_block *block);
+sf_size_t get_pow(sf_size_t pow);
 
 void *sf_malloc(sf_size_t size)
 {
@@ -84,13 +86,16 @@ void *sf_malloc(sf_size_t size)
         {
             while (ptr != header)
             {
-                if (get_block_size(ptr->header) - min_size > get_size_of_index(i))
+                if (get_block_size(ptr->header) - min_size >= min)
                 {
+                    remove_list(ptr);
                     sf_block *block = split_block(ptr, min_size);
                     sf_size_t block_size = get_block_size(block->header);
-                    set_entire_header(block, size, block_size, 1, get_prv_alloc(block->header), 0);
+                    set_entire_header(ptr, size, min_size, 1, get_prv_alloc(ptr->header), 0);
+                    set_entire_header(block, 0, block_size, 0, get_prv_alloc(ptr->header), 0);
+                    put_block(block);
                     // sf_show_block(block);
-                    return block->body.payload;
+                    return ptr->body.payload;
                 }
                 ptr = ptr->body.links.next;
             }
@@ -102,10 +107,8 @@ void *sf_malloc(sf_size_t size)
         last = epi;
     if (last->body.links.next != NULL)
     {
-        last->body.links.next->body.links.prev = last->body.links.prev;
-        last->body.links.prev->body.links.next = last->body.links.next;
+        remove_list(last);
     }
-    
     sf_size_t require_size = min_size - get_block_size(last->header);
     size_t i = 0;
     for (; i < require_size; i += 1024)
@@ -121,14 +124,14 @@ void *sf_malloc(sf_size_t size)
     if (get_block_size(last->header) - min_size >= 32)
     {
         ptr = split_block(last, min_size);
-        put_block(last);
+        put_block(ptr);
     }
-    set_entire_header(ptr, size, get_block_size(ptr->header), 1, get_prv_alloc(ptr->header), 0);
+    set_entire_header(last, size, get_block_size(last->header), 1, get_prv_alloc(last->header), 0);
     epi = (sf_block *)(((intptr_t)sf_mem_end()) - 2 * sizeof(sf_header));
 
     // sf_show_block(ptr);
     // sf_show_block(epi);
-    return ptr->body.payload;
+    return last->body.payload;
 }
 
 void sf_free(void *pp)
@@ -181,7 +184,7 @@ void *sf_realloc(void *pp, sf_size_t rsize)
             return block->body.payload;
         else
         {
-            sf_block *ptr = split_block(block, (size - new_size));
+            sf_block *ptr = split_block(block, new_size);
             put_block(ptr);
             return block->body.payload;
         }
@@ -381,10 +384,9 @@ void put_block(sf_block *block)
 
 sf_size_t get_index(sf_size_t size)
 {
-    size /= 32;
     size_t index = 0;
-    for (; index < (NUM_FREE_LISTS - 1); index++, size /= 2)
-        if (size == 1)
+    for (; index < (NUM_FREE_LISTS - 1); index++)
+        if (size <= get_pow(index)*32)
             break;
     return index;
 }
@@ -394,13 +396,18 @@ sf_size_t get_size_of_index(sf_size_t index)
     return 16 << index;
 }
 
+sf_size_t get_pow(sf_size_t pow)
+{
+    return 1 << pow;
+}
+
 sf_block *split_block(sf_block *block, size_t size)
 {
     size_t original_size = get_block_size(block->header);
     size_t new_size = original_size - size;
-    set_block_size(block, new_size);
+    set_block_size(block, size);
     sf_block *ptr = get_next_block(block);
-    set_entire_header(ptr, 0, size, 0, get_prv_alloc(block->header), 0);
+    set_entire_header(ptr, 0, new_size, 0, get_prv_alloc(block->header), 0);
     ptr->prev_footer = block->header;
     return ptr;
 }
@@ -450,4 +457,10 @@ sf_block *get_prev_block(sf_block *block)
 sf_block *get_next_block(sf_block *block)
 {
     return (sf_block *)(((intptr_t)block) + get_block_size(block->header));
+}
+
+void remove_list(sf_block *block)
+{
+    block->body.links.next->body.links.prev = block->body.links.prev;
+    block->body.links.prev->body.links.next = block->body.links.next;
 }
