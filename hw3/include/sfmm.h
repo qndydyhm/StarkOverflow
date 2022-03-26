@@ -315,12 +315,12 @@ void *sf_mem_grow();
  */
 sf_header sf_magic();
 
-//#define MAGIC (sf_magic())
-#ifndef WEAK_MAGIC 
-#define MAGIC (sf_magic()) 
-#else 
-#define MAGIC ((sf_header)0x0) 
-#endif 
+#define MAGIC (sf_magic())
+// #ifndef WEAK_MAGIC 
+// #define MAGIC (sf_magic()) 
+// #else 
+// #define MAGIC ((sf_header)0x0) 
+// #endif 
 /*
  * Set the "magic number" used to obfuscate header and footer contents.
  * Setting the magic number to zero essentially turns off obfuscation, which will
