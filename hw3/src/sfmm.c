@@ -63,7 +63,7 @@ void *sf_malloc(sf_size_t size)
             sf_quick_lists[index].length -= 1;
             sf_quick_lists[index].first = block->body.links.next;
             set_entire_header(block, size, get_block_size(block->header), 1, get_prv_alloc(block->header), 0, 0);
-            return block;
+            return block->body.payload;
         }
 
     index = get_index(min_size);
