@@ -15,6 +15,10 @@ static sf_block *epi;
 static sf_size_t in_qklst = 0x00000001;
 static sf_size_t prv_alloc = 0x00000002;
 static sf_size_t alloc = 0x00000004;
+// static sf_size_t total_payload = 0;
+// static sf_size_t max_payload = 0;
+// static sf_size_t total_block_size = 0;
+static sf_size_t total_pages = 0;
 
 int sf_initialize();
 void set_header(sf_block *block, sf_header value);
@@ -52,7 +56,6 @@ void *sf_malloc(sf_size_t size)
     if (sf_mem_start() == sf_mem_end())
         if (sf_initialize())
             return NULL;
-    // sf_show_heap();
     sf_size_t min_size = get_min_size(size);
 
     sf_size_t index = (min_size - 32) / 16;
@@ -81,6 +84,7 @@ void *sf_malloc(sf_size_t size)
                     set_entire_header(ptr, size, get_block_size(ptr->header), 1, get_prv_alloc(ptr->header), 0, 0);
                     return ptr->body.payload;
                 }
+                ptr = ptr->body.links.next;
             }
         }
         else
@@ -95,7 +99,6 @@ void *sf_malloc(sf_size_t size)
                     set_entire_header(ptr, size, min_size, 1, get_prv_alloc(ptr->header), 0, 0);
                     set_entire_header(block, 0, block_size, 0, get_prv_alloc(block->header), 0, 0);
                     put_block(block);
-                    // sf_show_block(block);
                     return ptr->body.payload;
                 }
                 ptr = ptr->body.links.next;
@@ -113,6 +116,7 @@ void *sf_malloc(sf_size_t size)
             sf_errno = ENOMEM;
             return NULL;
         }
+        total_pages += 1024;
         if (last->body.links.next != NULL)
             remove_list(last);
         set_entire_header(last, 0, (get_block_size(last->header) + PAGE_SZ), 0, get_prv_alloc(last->header), 0, 0);
@@ -130,8 +134,6 @@ void *sf_malloc(sf_size_t size)
     epi = (sf_block *)(((intptr_t)sf_mem_end()) - 2 * sizeof(sf_header));
     set_entire_header(epi, 0, 0, 1, get_alloc(epi->prev_footer), 0, 1);
 
-    // sf_show_block(ptr);
-    // sf_show_block(epi);
     return last->body.payload;
 }
 
@@ -170,11 +172,12 @@ void *sf_realloc(void *pp, sf_size_t rsize)
     valid_pointer(block);
     sf_size_t size = get_block_size(block->header);
     sf_size_t new_size = get_min_size(rsize);
-    if (new_size >= size)
+    if (new_size > size)
     {
-        sf_block *new = (sf_block *)(((intptr_t)sf_malloc(rsize)) - 2 * sizeof(sf_header));
-        if (new == NULL)
+        sf_block *new;
+        if ((new = sf_malloc(rsize)) == NULL)
             return NULL;
+        new = (sf_block *)(((intptr_t)new) - 2 * sizeof(sf_header));
         memcpy(new->body.payload, block->body.payload, size);
         sf_free(pp);
         return new->body.payload;
@@ -216,13 +219,12 @@ int sf_initialize()
         sf_errno = ENOMEM;
         return 1;
     }
+    total_pages += 1024;
     pro = (sf_block *)sf_mem_start();
-    // sf_show_block(pro);
     set_entire_header(pro, 0, 32, 1, 1, 0, 1);
     epi = (sf_block *)(((intptr_t)sf_mem_end()) - 2 * sizeof(sf_header));
 
     set_entire_header(epi, 0, 0, 1, 1, 0, 1);
-    // sf_show_block(epi);
     for (size_t i = 0; i < NUM_FREE_LISTS; i++)
     {
         sf_free_list_heads[i].body.links.prev = &sf_free_list_heads[i];
@@ -412,7 +414,7 @@ void valid_pointer(sf_block *pp)
         abort();
     if (get_block_size(pp->header) < 32 || get_block_size(pp->header) % 16 != 0)
         abort();
-    if (((intptr_t)&pp->header) < (((intptr_t)&pro->header) + 32) || ((intptr_t)&pp->header) > (((intptr_t)&epi->header) - 8))
+    if (((intptr_t)&pp->header) < (((intptr_t)&pro->header) + 32) || ((intptr_t)&pp->header) >= (((intptr_t)&epi->header) - 16))
         abort();
     if (get_alloc(pp->header) == 0 || (get_prv_alloc(pp->header) == 0 && get_alloc(pp->prev_footer) != 0))
         abort();
