@@ -170,11 +170,11 @@ void *sf_realloc(void *pp, sf_size_t rsize)
     sf_size_t new_size = get_min_size(size);
     if (new_size >= size)
     {
-        sf_block *new = sf_malloc(rsize);
+        sf_block *new = (sf_block *)(((intptr_t)sf_malloc(rsize)) - 2 * sizeof(sf_header));
         if (new == NULL)
             return NULL;
         memcpy(new->body.payload, block->body.payload, size);
-        sf_free(block);
+        sf_free(pp);
         return new->body.payload;
     }
     else
