@@ -180,7 +180,10 @@ void *sf_realloc(void *pp, sf_size_t rsize)
     else
     {
         if (size - new_size < min)
+        {
+            set_entire_header(block, rsize, size, 1, get_prv_alloc(block->header), 0);
             return block->body.payload;
+        }
         else
         {
             sf_block *ptr = split_block(block, new_size);
