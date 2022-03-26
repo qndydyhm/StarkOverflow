@@ -4,13 +4,13 @@
 int main(int argc, char const *argv[]) {
     sf_set_magic(0x0);
 
-        size_t sz_x = sizeof(int), sz_y = 10, sz_x1 = sizeof(int) * 20;
+        size_t sz_x = sizeof(double) * 8, sz_y = sizeof(int);
 	void *x = sf_malloc(sz_x);
-	/* void *y = */ sf_malloc(sz_y);
-	x = sf_realloc(x, sz_x1);
+	sf_realloc(x, sz_y);
 
 	// cr_assert_not_null(x, "x is NULL!");
 	// sf_block *bp = (sf_block *)((char *)x - 16);
+
 
 
     sf_show_heap();

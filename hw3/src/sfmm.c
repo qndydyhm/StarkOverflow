@@ -167,7 +167,7 @@ void *sf_realloc(void *pp, sf_size_t rsize)
     sf_block *block = (sf_block *)(((intptr_t)pp) - 2 * sizeof(sf_header));
     valid_pointer(block);
     sf_size_t size = get_block_size(block->header);
-    sf_size_t new_size = get_min_size(size);
+    sf_size_t new_size = get_min_size(rsize);
     if (new_size >= size)
     {
         sf_block *new = (sf_block *)(((intptr_t)sf_malloc(rsize)) - 2 * sizeof(sf_header));
@@ -184,7 +184,9 @@ void *sf_realloc(void *pp, sf_size_t rsize)
         else
         {
             sf_block *ptr = split_block(block, new_size);
-            put_block(ptr);
+            set_entire_header(block, rsize, new_size, 1, get_prv_alloc(block->header), 0);
+            set_entire_header(ptr, 0, get_block_size(ptr->header), 0, get_prv_alloc(ptr->header), 0);
+            release_block(ptr);
             return block->body.payload;
         }
     }
