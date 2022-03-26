@@ -136,8 +136,8 @@ void *sf_malloc(sf_size_t size)
         set_entire_header(ptr, 0, (get_block_size(ptr->header)), 0, get_prv_alloc(ptr->header), 0, 0);
         put_block(ptr);
     }
-    set_entire_header(last, size, get_block_size(last->header), 1, get_prv_alloc(last->header), 0, 0);
     epi = (sf_block *)(((intptr_t)sf_mem_end()) - 2 * sizeof(sf_header));
+    set_entire_header(last, size, get_block_size(last->header), 1, get_prv_alloc(last->header), 0, 0);
     set_entire_header(epi, 0, 0, 1, get_alloc(epi->prev_footer), 0, 1);
 
     return last->body.payload;
@@ -278,10 +278,23 @@ void set_header(sf_block *block, sf_header value)
 {
     value ^= MAGIC;
     block->header = value;
+    if (block == epi)
+        return;
+    sf_block *next = get_next_block(block);
     if (get_alloc(block->header) == 0)
     {
-        sf_block *next = get_next_block(block);
         next->prev_footer = block->header;
+        if ((prv_alloc & (sf_size_t)MAGIC) == 0)
+            next->header = next->header & ~prv_alloc;
+        else 
+            next->header = next->header | prv_alloc;
+    }
+    else
+    {
+        if ((prv_alloc & (sf_size_t)MAGIC) == 0)
+            next->header = next->header | prv_alloc;
+        else 
+            next->header = next->header & ~prv_alloc;
     }
 }
 
@@ -426,7 +439,7 @@ sf_block *split_block(sf_block *block, size_t size)
     size_t new_size = original_size - size;
     set_block_size(block, size);
     sf_block *ptr = get_next_block(block);
-    set_entire_header(ptr, 0, new_size, 0, get_prv_alloc(block->header), 0, 1);
+    set_entire_header(ptr, 0, new_size, 0, get_alloc(block->header), 0, 1);
     ptr->prev_footer = block->header;
     return ptr;
 }
