@@ -100,6 +100,12 @@ void *sf_malloc(sf_size_t size)
     sf_block *last = get_prev_block(epi);
     if (get_alloc(last->header) == 1)
         last = epi;
+    if (last->body.links.next != NULL)
+    {
+        last->body.links.next->body.links.prev = last->body.links.prev;
+        last->body.links.prev->body.links.next = last->body.links.next;
+    }
+    
     sf_size_t require_size = min_size - get_block_size(last->header);
     size_t i = 0;
     for (; i < require_size; i += 1024)
