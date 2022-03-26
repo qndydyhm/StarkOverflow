@@ -105,25 +105,24 @@ void *sf_malloc(sf_size_t size)
     sf_block *last = get_prev_block(epi);
     if (get_alloc(last->header) == 1)
         last = epi;
-    if (last->body.links.next != NULL)
-    {
-        remove_list(last);
-    }
-    sf_size_t require_size = min_size - get_block_size(last->header);
-    size_t i = 0;
-    for (; i < require_size; i += 1024)
+    while (get_block_size(last->header) < min_size)
     {
         if (sf_mem_grow() == NULL)
         {
             sf_errno = ENOMEM;
             return NULL;
         }
+        if (last->body.links.next != NULL)
+            remove_list(last);
+        set_entire_header(last, 0, (get_block_size(last->header) + PAGE_SZ), 0, get_prv_alloc(last->header), 0);
+        put_block(last);
     }
-    set_entire_header(last, 0, (get_block_size(last->header) + i), 0, get_prv_alloc(last->header), 0);
     sf_block *ptr = last;
-    if (get_block_size(last->header) - min_size >= 32)
+    remove_list(last);
+    if (get_block_size(last->header) - min_size >= min)
     {
         ptr = split_block(last, min_size);
+        set_entire_header(ptr, 0, (get_block_size(ptr->header)), 0, get_prv_alloc(ptr->header), 0);
         put_block(ptr);
     }
     set_entire_header(last, size, get_block_size(last->header), 1, get_prv_alloc(last->header), 0);
@@ -386,7 +385,7 @@ sf_size_t get_index(sf_size_t size)
 {
     size_t index = 0;
     for (; index < (NUM_FREE_LISTS - 1); index++)
-        if (size <= get_pow(index)*32)
+        if (size <= get_pow(index) * 32)
             break;
     return index;
 }
