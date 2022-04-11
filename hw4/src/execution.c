@@ -227,6 +227,9 @@ int exec_stmt(STMT *stmt) {
 	    int job = eval_to_numeric(stmt->members.jobctl_stmt.expr);
 	    int status = jobs_wait(job);
 	    store_set_int(STATUS_VAR, status);
+	    char *output = jobs_get_output(job);
+	    if(output)
+		store_set_string(OUTPUT_VAR, output);
 	    jobs_expunge(job);
 	}
 	break;
@@ -235,8 +238,12 @@ int exec_stmt(STMT *stmt) {
 	    int job = eval_to_numeric(stmt->members.jobctl_stmt.expr);
 	    int status = jobs_poll(job);
 	    store_set_int(STATUS_VAR, status);
-	    if(status >= 0)
+	    if(status >= 0) {
+		char *output = jobs_get_output(job);
+		if(output)
+		    store_set_string(OUTPUT_VAR, output);
 		jobs_expunge(job);
+	    }
 	}
 	break;
     case CANCEL_STMT_CLASS:
