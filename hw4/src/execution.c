@@ -256,6 +256,7 @@ int exec_stmt(STMT *stmt) {
 	{
 	    jobs_pause();
 	}
+	break;
     default:
 	fprintf(stderr, "Unknown statement class: %d\n", stmt->class);
 	abort();
