@@ -75,38 +75,28 @@ void *sf_malloc(sf_size_t size)
     {
         sf_block *header = &sf_free_list_heads[i];
         sf_block *ptr = header->body.links.next;
-        if (i == index)
+        while (ptr != header)
         {
-            while (ptr != header)
+            if (get_block_size(ptr->header) - min_size >= min)
             {
-                if (get_block_size(ptr->header) >= min_size)
-                {
-                    set_entire_header(ptr, size, get_block_size(ptr->header), 1, get_prv_alloc(ptr->header), 0, 0);
-                    total_block_size += get_block_size(ptr->header);
-                    add_payload(size);
-                    return ptr->body.payload;
-                }
-                ptr = ptr->body.links.next;
+                remove_list(ptr);
+                sf_block *block = split_block(ptr, min_size);
+                sf_size_t block_size = get_block_size(block->header);
+                set_entire_header(ptr, size, min_size, 1, get_prv_alloc(ptr->header), 0, 0);
+                set_entire_header(block, 0, block_size, 0, get_prv_alloc(block->header), 0, 0);
+                put_block(block);
+                total_block_size += get_block_size(ptr->header);
+                add_payload(size);
+                return ptr->body.payload;
             }
-        }
-        else
-        {
-            while (ptr != header)
+            else if (get_block_size(ptr->header) >= min_size)
             {
-                if (get_block_size(ptr->header) - min_size >= min)
-                {
-                    remove_list(ptr);
-                    sf_block *block = split_block(ptr, min_size);
-                    sf_size_t block_size = get_block_size(block->header);
-                    set_entire_header(ptr, size, min_size, 1, get_prv_alloc(ptr->header), 0, 0);
-                    set_entire_header(block, 0, block_size, 0, get_prv_alloc(block->header), 0, 0);
-                    put_block(block);
-                    total_block_size += get_block_size(ptr->header);
-                    add_payload(size);
-                    return ptr->body.payload;
-                }
-                ptr = ptr->body.links.next;
+                set_entire_header(ptr, size, get_block_size(ptr->header), 1, get_prv_alloc(ptr->header), 0, 0);
+                total_block_size += get_block_size(ptr->header);
+                add_payload(size);
+                return ptr->body.payload;
             }
+            ptr = ptr->body.links.next;
         }
     }
 
