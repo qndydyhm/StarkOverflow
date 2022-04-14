@@ -1,4 +1,7 @@
-bin/
-build/
 *~
+#*
+*.d
+*.o
 *.out
+bin/*
+build/*
