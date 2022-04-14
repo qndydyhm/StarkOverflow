@@ -3,5 +3,5 @@
 *.d
 *.o
 *.out
-bin/*
-build/*
+bin/
+build/
