@@ -4,6 +4,7 @@
 #include <errno.h>
 
 #include "mush.h"
+#include "store.h"
 
 int main(int argc, char *argv[]) {
     jobs_init();
