@@ -6,7 +6,7 @@ typedef struct store_data
     struct store_data *next;
 } store_data;
 
-store_data *head;
+store_data *store_head;
 
 void store_init();
 store_data* store_get_data(char* var);

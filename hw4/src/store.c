@@ -191,14 +191,14 @@ int store_set_int(char *var, long val) {
  * @param f  The stream to which the store contents are to be printed.
  */
 void store_show(FILE *f) {
-    store_data* ptr = head->next;
+    store_data* ptr = store_head->next;
 
     fprintf(f, "{");
-    while (ptr != head)
+    while (ptr != store_head)
     {
         fprintf(f, "%s=%s", ptr->name, ptr->value);
         ptr = ptr->next;
-        if ((ptr != head))
+        if ((ptr != store_head))
             fprintf(f, ", ");
         
     }
@@ -206,17 +206,17 @@ void store_show(FILE *f) {
 }
 
 void store_init() {
-    head = malloc(sizeof(store_data));
-    head->name = NULL;
-    head->value = NULL;
-    head->next = head;
-    head->prev = head;
+    store_head = malloc(sizeof(store_data));
+    store_head->name = NULL;
+    store_head->value = NULL;
+    store_head->next = store_head;
+    store_head->prev = store_head;
 }
 
 store_data* store_get_data(char* var) {
-    store_data* ptr = head->next;
+    store_data* ptr = store_head->next;
 
-    while (ptr != head)
+    while (ptr != store_head)
     {
         if (strcmp(ptr->name, var) == 0)
             return ptr;
@@ -238,18 +238,18 @@ void store_remove_data(store_data* data) {
 }
 
 void store_add_data(store_data* data) {
-    data->next = head->next;
-    data->prev = head;
+    data->next = store_head->next;
+    data->prev = store_head;
     data->next->prev = data;
     data->prev->next = data;
 }
 
 void store_fini() {
-    while (head->next != head)
-        store_remove_data(head->next);
+    while (store_head->next != store_head)
+        store_remove_data(store_head->next);
 
-    free(head);
-    head = NULL;
+    free(store_head);
+    store_head = NULL;
 }
 
 char* store_strcpy(char *str) {

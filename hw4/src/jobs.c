@@ -12,6 +12,7 @@
 #include "mush.h"
 #include "debug.h"
 #include "store.h"
+#include "program.h"
 
 /*
  * This is the "jobs" module for Mush.
@@ -49,6 +50,7 @@
  */
 int jobs_init(void) {
     store_init();
+    prog_init();
     return 0;
 }
 
@@ -63,7 +65,9 @@ int jobs_init(void) {
  * @return 0 if finalization is completely successful, otherwise -1.
  */
 int jobs_fini(void) {
+    // TODO cancel jobs, wait for terminate
     store_fini();
+    prog_fini();
     return 0;
 }
 
@@ -85,7 +89,7 @@ int jobs_fini(void) {
  */
 int jobs_show(FILE *file) {
     // TO BE IMPLEMENTED
-    abort();
+    return 0;
 }
 
 /**

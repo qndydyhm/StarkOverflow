@@ -3,6 +3,7 @@
 
 #include "mush.h"
 #include "debug.h"
+#include "program.h"
 
 /*
  * This is the "program store" module for Mush.
@@ -25,8 +26,17 @@
  * @return  0 if successful, -1 if any error occurred.
  */
 int prog_list(FILE *out) {
-    // TO BE IMPLEMENTED
-    abort();
+    prog_data *ptr = prog_head->next;
+    while (1)
+    {
+        if (ptr == prog_counter)
+            fprintf(out, "-->\n");
+        if (ptr == prog_head)
+            break;
+        show_stmt(out, ptr->stmt);
+        ptr = ptr->next;
+    }
+    return 0;
 }
 
 /**
@@ -47,8 +57,30 @@ int prog_list(FILE *out) {
  * @return  0 if successful, -1 if any error occurred.
  */
 int prog_insert(STMT *stmt) {
-    // TO BE IMPLEMENTED
-    abort();
+    // if no lineno, return -1
+    if (!stmt->lineno)
+        return -1;
+
+    // get first stmt after lineno
+    prog_data *ptr = prog_get_data(stmt->lineno);
+
+    // if stmt exists
+    if (ptr != prog_head && ptr->stmt->lineno == stmt->lineno)
+    {
+        free_stmt(ptr->stmt);
+        ptr->stmt = stmt;
+        return 0;
+    }
+    
+
+    // insert the new one
+    prog_data *new = malloc(sizeof(prog_data));
+    new->next = ptr;
+    new->prev = ptr->prev;
+    new->prev->next = new;
+    new->next->prev = new;
+    new->stmt = stmt;
+    return 0;
 }
 
 /**
@@ -69,8 +101,24 @@ int prog_insert(STMT *stmt) {
  * @param max  Upper end of the range of line numbers to be deleted.
  */
 int prog_delete(int min, int max) {
-    // TO BE IMPLEMENTED
-    abort();
+    // get the stmt greater than or equal to min
+    prog_data *ptr = prog_get_data(min);
+
+    // deletion
+    while (1)
+    {
+        // break if next stmt is head or greater than max
+        if (ptr == prog_head || ptr->stmt->lineno > max)
+            break;
+        // if is counter, counter move to the next stmt
+        if (ptr == prog_counter)
+            prog_counter = ptr->next;
+        // delete statement
+        ptr = ptr->next;
+        prog_remove_data(ptr->prev);
+    }
+    
+    return 0;
 }
 
 /**
@@ -79,8 +127,7 @@ int prog_delete(int min, int max) {
  * before the first statement in the program.
  */
 void prog_reset(void) {
-    // TO BE IMPLEMENTED
-    abort();
+    prog_counter = prog_head->next;
 }
 
 /**
@@ -95,8 +142,9 @@ void prog_reset(void) {
  * counter position, if any, otherwise NULL.
  */
 STMT *prog_fetch(void) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (prog_counter != prog_head)
+        return prog_counter->stmt;
+    return NULL;
 }
 
 /**
@@ -111,8 +159,11 @@ STMT *prog_fetch(void) {
  * position, if any, otherwise NULL.
  */
 STMT *prog_next() {
-    // TO BE IMPLEMENTED
-    abort();
+    // if has next
+    if (prog_counter != prog_head)
+        prog_counter = prog_counter->next;
+    
+    return prog_fetch();
 }
 
 /**
@@ -131,6 +182,53 @@ STMT *prog_next() {
  * statement exists, otherwise NULL.
  */
 STMT *prog_goto(int lineno) {
-    // TO BE IMPLEMENTED
-    abort();
+    // get first stmt with greter than or equal to lineno
+    prog_data *ptr = prog_get_data(lineno);
+    // return NULL is no such stmt exists
+    if (ptr == prog_head)
+        return NULL;
+    // if equal, return stmt
+    if (ptr->stmt->lineno == lineno) {
+        prog_counter = ptr;
+        return ptr->stmt;
+    }
+    // else return NULL
+    return NULL;
+}
+
+prog_data *prog_get_data(int lineno) {
+    // go through the double-linked list and find the fist stmt with lineno greater than or equal to lineno
+    prog_data *ptr = prog_head->next;
+    while (ptr != prog_head)
+    {
+        if (ptr->stmt->lineno >= lineno)
+            return ptr;
+        ptr = ptr->next;
+    }
+    return prog_head;
+}
+
+void prog_remove_data(prog_data* data) {
+    data->prev->next = data->next;
+    data->next->prev = data->prev;
+    if (data->stmt) {
+        free_stmt(data->stmt);
+    }
+    free(data);
+}
+
+void prog_init() {
+    prog_head = malloc(sizeof(prog_data));
+    prog_head->next = prog_head;
+    prog_head->prev = prog_head;
+    prog_head->stmt = NULL;
+    prog_counter = prog_head;
+}
+
+void prog_fini() {
+    while (prog_head->next != prog_head)
+        prog_remove_data(prog_head->next);
+
+    free(prog_head);
+    prog_head = NULL;
 }
