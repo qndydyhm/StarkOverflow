@@ -30,6 +30,8 @@
  * otherwise NULL.
  */
 char *store_get_string(char *var) {
+    if (!var)
+        return -1;
     store_data *data = store_get_data(var);
     if (data)
         return data->value;
@@ -50,6 +52,8 @@ char *store_get_string(char *var) {
  * otherwise 0 is returned.
  */
 int store_get_int(char *var, long *valp) {
+    if (!var || !valp)
+        return -1;
     store_data *data = store_get_data(var);
     if (data) {
         // is NULL
@@ -91,6 +95,9 @@ int store_get_int(char *var, long *valp) {
  * un-set.
  */
 int store_set_string(char *var, char *val) {
+    if (!var)
+        return -1;
+    
     store_data* data = store_get_data(var);
     // if want to unset a value that does not exist
     if (!data && !val)
@@ -133,6 +140,8 @@ int store_set_string(char *var, char *val) {
  * @param  val  The value to set.
  */
 int store_set_int(char *var, long val) {
+    if (!var)
+        return -1;
     // if val is 0, set var to 0
     if (val == 0)
         return store_set_string(var, "0");

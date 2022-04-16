@@ -224,6 +224,9 @@ int jobs_show(FILE *file) {
  * value returned is the job ID assigned to the pipeline.
  */
 int jobs_run(PIPELINE *pline) {
+    if (!pline)
+        return -1;
+    
     pline = copy_pipeline(pline);
     // return -1 if no place for new job
     if (job_current_size + 1 >= MAX_JOBS)
@@ -423,6 +426,8 @@ char **jobs_get_args(ARG *args) {
  * or -1 if any error occurs that makes it impossible to wait for the specified job.
  */
 int jobs_wait(int jobid) {
+    if (jobid >= MAX_JOBS || jobid < 0)
+        return -1;
     if (!job_data_array[jobid])
         return -1;
     if (job_data_array[jobid]->status == COMPLETED ||
@@ -458,6 +463,8 @@ int jobs_wait(int jobid) {
  * has terminated, or -1 if the job has not yet terminated or if any other error occurs.
  */
 int jobs_poll(int jobid) {
+    if (jobid >= MAX_JOBS || jobid < 0)
+        return -1;
     if (!job_data_array[jobid])
         return -1;
     if (job_data_array[jobid]->status != COMPLETED &&
@@ -481,6 +488,8 @@ int jobs_poll(int jobid) {
  * @return  0 if the job was successfully expunged, -1 if the job could not be expunged.
  */
 int jobs_expunge(int jobid) {
+    if (jobid >= MAX_JOBS || jobid < 0)
+        return -1;
     if (!job_data_array[jobid])
         return -1;
     if (job_data_array[jobid]->status != COMPLETED &&
@@ -523,6 +532,8 @@ int jobs_expunge(int jobid) {
  * error occurred.
  */
 int jobs_cancel(int jobid) {
+    if (jobid >= MAX_JOBS || jobid < 0)
+        return -1;
     if (!job_data_array[jobid])
         return -1;
     if (job_data_array[jobid]->status == COMPLETED ||
@@ -554,6 +565,8 @@ int jobs_cancel(int jobid) {
  * output available, otherwise NULL.
  */
 char *jobs_get_output(int jobid) {
+    if (jobid >= MAX_JOBS || jobid < 0)
+        return NULL;
     if (!job_data_array[jobid])
         return NULL;
     if (job_data_array[jobid]->status != COMPLETED &&
