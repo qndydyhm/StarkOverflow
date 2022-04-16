@@ -99,7 +99,6 @@ void io_handler(int sig) {
                     job_data_array[i]->output = realloc(job_data_array[i]->output, (job_data_array[i]->output_length + 1) * sizeof(char));
                     job_data_array[i]->output[job_data_array[i]->output_length - 1] = c;
                     job_data_array[i]->output[job_data_array[i]->output_length] = '\0';
-                    printf("%c", c);
                 }
             }
         }
@@ -369,7 +368,8 @@ int jobs_run(PIPELINE *pline) {
         exit(exit_code);
     }
     
-    // close(new->pipe[1]);
+    if (new->pipeline->capture_output)
+        close(new->pipe[1]);
     new->status = RUNNING;
     
     return 0;
