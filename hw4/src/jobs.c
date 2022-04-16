@@ -341,8 +341,16 @@ int jobs_run(PIPELINE *pline) {
                 char **args = jobs_get_args(pline->commands->args);
                 
                 // run command
-                if (execvp(args[0], args) == -1)
+                if (execvp(args[0], args) == -1) {
+                    char **char_ptr = args;
+                    while (*char_ptr)
+                    {
+                        free(*char_ptr);
+                        char_ptr ++;
+                    }
+                    free(args);
                     exit(-1);
+                }
             }
             
             else {
