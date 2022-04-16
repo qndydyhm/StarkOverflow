@@ -92,9 +92,12 @@ void io_handler(int sig) {
             if (job_data_array[i]->pipeline->capture_output)
             {
                 char c;
-                while (read(job_data_array[i]->pipe[0], &c, sizeof(char)) &&
-                        read(job_data_array[i]->pipe[0], &c, sizeof(char)) != -1)
+                while (1)
                 {
+                    int num = read(job_data_array[i]->pipe[0], &c, sizeof(char));
+                    if (num == 0 || num == -1) {
+                        break;
+                    }
                     job_data_array[i]->output_length ++;
                     job_data_array[i]->output = realloc(job_data_array[i]->output, (job_data_array[i]->output_length + 1) * sizeof(char));
                     job_data_array[i]->output[job_data_array[i]->output_length - 1] = c;
