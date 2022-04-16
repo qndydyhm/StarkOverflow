@@ -498,6 +498,7 @@ int jobs_expunge(int jobid) {
     
     free_pipeline(job_data_array[jobid]->pipeline);
     job_current_size -= 1;
+    free(job_data_array[jobid]);
     job_data_array[jobid] = NULL;
 
     return 0;
