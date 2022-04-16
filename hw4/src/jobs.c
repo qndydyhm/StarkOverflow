@@ -359,6 +359,8 @@ int jobs_run(PIPELINE *pline) {
                     }
                     free(args);
                     int exit_code = errno;
+                    close(STDIN_FILENO);
+                    close(STDOUT_FILENO);
                     exit(exit_code);
                 }
             }
@@ -385,6 +387,8 @@ int jobs_run(PIPELINE *pline) {
             if (WIFEXITED(status))
                 exit_code = WEXITSTATUS(status);
         }
+        close(STDIN_FILENO);
+        close(STDOUT_FILENO);
         exit(exit_code);
     }
     
