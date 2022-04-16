@@ -284,6 +284,9 @@ int jobs_run(PIPELINE *pline) {
         for (size_t i = 0; i < size; i++)
         {
             pids[i] = fork();
+            if(pids[i] == -1) {
+                return -1;
+            }
             if (pids[i] == 0)
             {
                 // is a child process
