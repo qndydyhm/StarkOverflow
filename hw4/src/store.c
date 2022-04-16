@@ -31,7 +31,7 @@
  */
 char *store_get_string(char *var) {
     if (!var)
-        return -1;
+        return NULL;
     store_data *data = store_get_data(var);
     if (data)
         return data->value;

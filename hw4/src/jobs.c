@@ -76,7 +76,11 @@ void chld_handler(int sig) {
                     if (WIFEXITED(status))
                     {
                         job_data_array[i]->exit_status = WEXITSTATUS(status);
-                        job_data_array[i]->status = job_data_array[i]->exit_status == 0 ? COMPLETED : ABORTED;
+                        job_data_array[i]->status = COMPLETED;
+                    }
+                    else {
+                        job_data_array[i]->exit_status = 6;
+                        job_data_array[i]->status = ABORTED;
                     }
                 }
             }
@@ -119,6 +123,8 @@ void io_handler(int sig) {
  * @return 0 if finalization is completely successful, otherwise -1.
  */
 int jobs_fini(void) {
+    store_fini();
+    prog_fini();
     for (size_t i = 0; i < MAX_JOBS; i++)
     {
         if (job_data_array[i])
@@ -133,9 +139,6 @@ int jobs_fini(void) {
         }
         
     }
-    
-    store_fini();
-    prog_fini();
     return 0;
 }
 
@@ -378,8 +381,7 @@ int jobs_run(PIPELINE *pline) {
         for (size_t i = 0; i < size; i++)
         {
             int status;
-            if (waitpid(pids[i], &status, 0) == -1)
-                exit(-1);
+            waitpid(pids[i], &status, 0);
             if (WIFEXITED(status))
                 exit_code = WEXITSTATUS(status);
         }
@@ -440,14 +442,12 @@ int jobs_wait(int jobid) {
     int return_stat = -1;
     if (WIFEXITED(status)) {
         return_stat = WEXITSTATUS(status);
-        if (return_stat == 0)
-        {
-            job_data_array[jobid]->status = COMPLETED;
-        }
-        else {
-            job_data_array[jobid]->status = ABORTED;
-        }
+        job_data_array[jobid]->status = COMPLETED;
         job_data_array[jobid]->exit_status = return_stat;
+    }
+    else {
+        job_data_array[jobid]->status = ABORTED;
+        job_data_array[jobid]->exit_status = 6;
     }
     return return_stat;
 }
@@ -503,7 +503,6 @@ int jobs_expunge(int jobid) {
 
     if (job_data_array[jobid]->pipeline->capture_output) {
         close(job_data_array[jobid]->pipe[0]);
-        // close(job_data_array[jobid]->pipe[1]);
     }
     
     free_pipeline(job_data_array[jobid]->pipeline);
@@ -545,10 +544,13 @@ int jobs_cancel(int jobid) {
     if (kill(pid, SIGKILL) == -1)
         return -1;
     int status;
-    if (waitpid(pid, &status, 0) == -1)
-        return -1; 
+    waitpid(pid, &status, 0);
     if (WIFEXITED(status)) {
         job_data_array[jobid]->exit_status = WEXITSTATUS(status);
+    }
+    else
+    {
+        job_data_array[jobid]->exit_status = 9;
     }
     job_data_array[jobid]->status = CANCELED;
     return 0;
