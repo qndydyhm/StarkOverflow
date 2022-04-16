@@ -334,10 +334,10 @@ int jobs_run(PIPELINE *pline) {
                     if (dup2(fds[i][1], STDOUT_FILENO) == -1)
                         return -1;
                 // close all fds
-                for (size_t i = 0; i < size - 1; i++)
+                for (size_t fd = 0; fd < size - 1; fd++)
                 {
-                    close(fds[i][0]);
-                    close(fds[i][1]);
+                    close(fds[fd][0]);
+                    close(fds[fd][1]);
                 }
 
                 // get args
@@ -352,7 +352,8 @@ int jobs_run(PIPELINE *pline) {
                         char_ptr ++;
                     }
                     free(args);
-                    exit(-1);
+                    int exit_code = errno;
+                    exit(exit_code);
                 }
             }
             
