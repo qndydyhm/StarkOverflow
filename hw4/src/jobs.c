@@ -13,6 +13,7 @@
 #include "debug.h"
 #include "store.h"
 #include "program.h"
+#include "jobs.h"
 
 /*
  * This is the "jobs" module for Mush.
@@ -51,7 +52,58 @@
 int jobs_init(void) {
     store_init();
     prog_init();
+    for (size_t i = 0; i < MAX_JOBS; i++)
+    {
+        job_data_array[i] = NULL;
+    }
+    job_current_size = 0;
+    signal(SIGCHLD, &chld_handler);
+    signal(SIGIO, &io_handler);
     return 0;
+}
+
+void chld_handler(int sig) {
+    pid_t pid;
+    int   status;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+    {
+        for (size_t i = 0; i < MAX_JOBS; i++)
+        {
+            if (job_data_array[i])
+            {
+                if (job_data_array[i]->pid == pid)
+                {
+                    if (WIFEXITED(status))
+                    {
+                        job_data_array[i]->exit_status = WEXITSTATUS(status);
+                        job_data_array[i]->status = job_data_array[i]->exit_status == 0 ? COMPLETED : ABORTED;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void io_handler(int sig) {
+    for (size_t i = 0; i < MAX_JOBS; i++)
+    {
+        if (job_data_array[i])
+        {
+            if (job_data_array[i]->pipeline->capture_output)
+            {
+                char c;
+                while (read(job_data_array[i]->pipe[0], &c, sizeof(char)) &&
+                        read(job_data_array[i]->pipe[0], &c, sizeof(char)) != -1)
+                {
+                    job_data_array[i]->output_length ++;
+                    job_data_array[i]->output = realloc(job_data_array[i]->output, (job_data_array[i]->output_length + 1) * sizeof(char));
+                    job_data_array[i]->output[job_data_array[i]->output_length - 1] = c;
+                    job_data_array[i]->output[job_data_array[i]->output_length] = '\0';
+                    printf("%c", c);
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -65,7 +117,21 @@ int jobs_init(void) {
  * @return 0 if finalization is completely successful, otherwise -1.
  */
 int jobs_fini(void) {
-    // TODO cancel jobs, wait for terminate
+    for (size_t i = 0; i < MAX_JOBS; i++)
+    {
+        if (job_data_array[i])
+        {
+            if (job_data_array[i]->status != COMPLETED &&
+                job_data_array[i]->status != ABORTED &&
+                job_data_array[i]->status != CANCELED)
+                if (jobs_cancel(i) == -1)
+                    return -1;
+            if (jobs_expunge(i) == -1)
+                return -1;
+        }
+        
+    }
+    
     store_fini();
     prog_fini();
     return 0;
@@ -88,7 +154,37 @@ int jobs_fini(void) {
  * @return 0  If the jobs table was successfully printed, -1 otherwise.
  */
 int jobs_show(FILE *file) {
-    // TO BE IMPLEMENTED
+    for (size_t i = 0; i < MAX_JOBS; i++)
+    {
+        if (job_data_array[i])
+        {
+            char *status;
+            switch (job_data_array[i]->status)
+            {
+            case NEW:
+                status = "new";
+                break;
+            case RUNNING:
+                status = "running";
+                break;
+            case COMPLETED:
+                status = "completed";
+                break;
+            case ABORTED:
+                status = "aborted";
+                break;
+            case CANCELED:
+                status = "canceled";
+                break;
+            default:
+                break;
+            }
+            fprintf(file, "%ld\t%d\t%s", i, job_data_array[i]->pid, status);
+            fprintf(file, "\t");
+            show_pipeline(file, job_data_array[i]->pipeline);
+            fprintf(file, "\n");
+        }
+    }
     return 0;
 }
 
@@ -126,8 +222,179 @@ int jobs_show(FILE *file) {
  * value returned is the job ID assigned to the pipeline.
  */
 int jobs_run(PIPELINE *pline) {
-    // TO BE IMPLEMENTED
-    abort();
+    pline = copy_pipeline(pline);
+    // return -1 if no place for new job
+    if (job_current_size + 1 >= MAX_JOBS)
+        return -1;
+    
+    // find index of first empty job
+    int index = 0;
+    while (job_data_array[index])
+        index++;
+
+    // create new job and put it in job array
+    job_data *new = malloc(sizeof(job_data));
+    new->status = NEW;
+    new->pipeline = pline;
+    new->output = NULL;
+    new->output_length = 0;
+    job_data_array[index] = new;
+
+    // create a pipeline if capture_output is set
+    if (pline->capture_output)
+    {
+        if (pipe(new->pipe) == -1)
+            return -1;
+        fcntl(new->pipe[0], F_SETFL, O_NONBLOCK);
+        fcntl(new->pipe[0], F_SETFL, O_ASYNC);
+        fcntl(new->pipe[0], __F_SETOWN, getpid());
+        new->output = malloc(sizeof(char));
+        new->output[0] = '\0';
+    }
+
+    // fork a leader process
+    new->pid = fork();
+    if (new->pid == -1)
+        return -1;
+
+    if (new->pid == 0)
+    {
+        // Leader process
+        // calculate the length of pipeline
+        COMMAND *ptr = pline->commands;
+        size_t size = 0;
+        while (ptr)
+        {
+            ptr = ptr->next;
+            size++;
+        }
+        // create array of pids and pipes
+        int pids[size];
+        int fds[size - 1][2];
+        for (size_t i = 0; i < size - 1; i++)
+        {
+            if (pipe(fds[i]) == -1)
+                return -1;
+        }
+        
+        // reset ptr to the beginning of pipeline
+        ptr = pline->commands;
+        for (size_t i = 0; i < size; i++)
+        {
+            pids[i] = fork();
+            if (pids[i] == 0)
+            {
+                // is a child process
+                // redirect input and output
+
+                // if is the first one and input file is defined
+                // redirect stdin to file
+                if (i == 0 && pline->input_file)
+                {
+                    int inputfd;
+                    if ((inputfd = open(pline->input_file, O_RDONLY)) == -1)
+                        return -1;
+                    if (dup2(inputfd, STDIN_FILENO) == -1)
+                        return -1;
+                    close(inputfd);
+                }
+                // if is the last one and capture is defined
+                // redirect stdout to file
+                if (i == size - 1 && pline->capture_output)
+                {
+                    if(dup2(new->pipe[1], STDOUT_FILENO) == -1)
+                        return -1;
+                    close(new->pipe[1]);
+                    close(new->pipe[0]);
+                }
+                // if is the last one and output file is defined
+                // redirect stdout to file
+                if (i == size - 1 && pline->output_file)
+                {
+                    int outputfd;
+                    if ((outputfd = open(pline->output_file, O_WRONLY | O_CREAT, 0666)) == -1)
+                        return -1;
+                    if(dup2(outputfd, STDOUT_FILENO) == -1)
+                        return -1;
+                    close(outputfd);
+                }
+                // if not first one
+                // redirect input
+                if (i != 0)
+                    if (dup2(fds[i-1][0], STDIN_FILENO) == -1)
+                        return -1;
+                // if not last one
+                // redirect output
+                if (i != size - 1)
+                    if (dup2(fds[i][1], STDOUT_FILENO) == -1)
+                        return -1;
+                // close all fds
+                for (size_t i = 0; i < size - 1; i++)
+                {
+                    close(fds[i][0]);
+                    close(fds[i][1]);
+                }
+
+                // get args
+                char **args = jobs_get_args(pline->commands->args);
+                
+                // run command
+                if (execvp(args[0], args) == -1)
+                    exit(-1);
+            }
+            
+            else {
+                // Leader process
+                ptr = ptr->next;
+            }
+        }
+        
+        // close fds for Leader
+        for (size_t i = 0; i < size - 1; i++)
+        {
+            close(fds[i][0]);
+            close(fds[i][1]);
+        }
+        
+        int exit_code = 0;
+        // wait for childs
+        for (size_t i = 0; i < size; i++)
+        {
+            int status;
+            if (waitpid(pids[i], &status, 0) == -1)
+                exit(-1);
+            if (WIFEXITED(status))
+                exit_code = WEXITSTATUS(status);
+        }
+        exit(exit_code);
+    }
+    
+    // close(new->pipe[1]);
+    new->status = RUNNING;
+    
+    return 0;
+}
+
+char **jobs_get_args(ARG *args) {
+    // get length of arg
+    int arg_size = 0;
+    ARG *argptr = args;
+    while (argptr)
+    {
+        arg_size ++;
+        argptr = argptr->next;
+    }
+    argptr = args;
+    // copy args into result
+    char **result = malloc((arg_size + 1)*sizeof(char*));
+    for (size_t i = 0; i < arg_size; i++)
+    {
+        result[i] = eval_to_string(argptr->expr);
+        argptr = argptr->next;
+    }
+    result[arg_size] = NULL;
+    
+    return result;
 }
 
 /**
@@ -141,8 +408,28 @@ int jobs_run(PIPELINE *pline) {
  * or -1 if any error occurs that makes it impossible to wait for the specified job.
  */
 int jobs_wait(int jobid) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!job_data_array[jobid])
+        return -1;
+    if (job_data_array[jobid]->status == COMPLETED ||
+        job_data_array[jobid]->status == ABORTED ||
+        job_data_array[jobid]->status == CANCELED)
+        return job_data_array[jobid]->exit_status;
+    int status;
+    if (waitpid(job_data_array[jobid]->pid, &status, 0) == -1)
+        return -1;
+    int return_stat = -1;
+    if (WIFEXITED(status)) {
+        return_stat = WEXITSTATUS(status);
+        if (return_stat == 0)
+        {
+            job_data_array[jobid]->status = COMPLETED;
+        }
+        else {
+            job_data_array[jobid]->status = ABORTED;
+        }
+        job_data_array[jobid]->exit_status = return_stat;
+    }
+    return return_stat;
 }
 
 /**
@@ -156,8 +443,14 @@ int jobs_wait(int jobid) {
  * has terminated, or -1 if the job has not yet terminated or if any other error occurs.
  */
 int jobs_poll(int jobid) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!job_data_array[jobid])
+        return -1;
+    if (job_data_array[jobid]->status != COMPLETED &&
+        job_data_array[jobid]->status != ABORTED &&
+        job_data_array[jobid]->status != CANCELED)
+        return -1;
+    
+    return job_data_array[jobid]->exit_status;
 }
 
 /**
@@ -173,8 +466,27 @@ int jobs_poll(int jobid) {
  * @return  0 if the job was successfully expunged, -1 if the job could not be expunged.
  */
 int jobs_expunge(int jobid) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!job_data_array[jobid])
+        return -1;
+    if (job_data_array[jobid]->status != COMPLETED &&
+        job_data_array[jobid]->status != ABORTED &&
+        job_data_array[jobid]->status != CANCELED)
+        return -1;
+    
+    
+    if (job_data_array[jobid]->output)
+        free(job_data_array[jobid]->output);
+
+    if (job_data_array[jobid]->pipeline->capture_output) {
+        close(job_data_array[jobid]->pipe[0]);
+        // close(job_data_array[jobid]->pipe[1]);
+    }
+    
+    free_pipeline(job_data_array[jobid]->pipeline);
+    job_current_size -= 1;
+    job_data_array[jobid] = NULL;
+
+    return 0;
 }
 
 /**
@@ -195,8 +507,24 @@ int jobs_expunge(int jobid) {
  * error occurred.
  */
 int jobs_cancel(int jobid) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!job_data_array[jobid])
+        return -1;
+    if (job_data_array[jobid]->status == COMPLETED ||
+        job_data_array[jobid]->status == ABORTED ||
+        job_data_array[jobid]->status == CANCELED)
+        return -1;
+
+    int pid = job_data_array[jobid]->pid;
+    if (kill(pid, SIGKILL) == -1)
+        return -1;
+    int status;
+    if (waitpid(pid, &status, 0) == -1)
+        return -1; 
+    if (WIFEXITED(status)) {
+        job_data_array[jobid]->exit_status = WEXITSTATUS(status);
+    }
+    job_data_array[jobid]->status = CANCELED;
+    return 0;
 }
 
 /**
@@ -210,8 +538,17 @@ int jobs_cancel(int jobid) {
  * output available, otherwise NULL.
  */
 char *jobs_get_output(int jobid) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!job_data_array[jobid])
+        return NULL;
+    if (job_data_array[jobid]->status != COMPLETED &&
+        job_data_array[jobid]->status != ABORTED &&
+        job_data_array[jobid]->status != CANCELED)
+        return NULL;
+    if (!job_data_array[jobid]->pipeline->capture_output)
+        return NULL;
+    if (!job_data_array[jobid]->output)
+        return "";
+    return job_data_array[jobid]->output;
 }
 
 /**
@@ -223,6 +560,7 @@ char *jobs_get_output(int jobid) {
  * @return -1 if any error occurred, 0 otherwise.
  */
 int jobs_pause(void) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (wait(NULL) == -1)
+        return -1; 
+    return 0;
 }

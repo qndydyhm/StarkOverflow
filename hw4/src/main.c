@@ -6,6 +6,7 @@
 #include "mush.h"
 #include "store.h"
 #include "program.h"
+#include "jobs.h"
 
 int main(int argc, char *argv[]) {
     jobs_init();

@@ -72,7 +72,7 @@ int store_get_int(char *var, long *valp) {
         }
         *valp = ans * sign;
     }
-    return -1;
+    return 0;
 }
 
 /**
