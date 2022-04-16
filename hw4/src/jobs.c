@@ -383,7 +383,7 @@ int jobs_run(PIPELINE *pline) {
         close(new->pipe[1]);
     new->status = RUNNING;
     
-    return 0;
+    return index;
 }
 
 char **jobs_get_args(ARG *args) {
