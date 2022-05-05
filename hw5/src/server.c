@@ -91,12 +91,12 @@ int pbx_get_next_command(FILE* f, char** str) {
                 return -3;
         }
 
+        cmd[index++] = c;
+        if (c == '\r' || c == '\n')
+            cmd[index-1] = '\0';
+
         if (c == '\n')
             break;
-        if (c == '\r')
-            c = '\0';
-        
-        cmd[index++] = c;
     }
 
     // command is empty
