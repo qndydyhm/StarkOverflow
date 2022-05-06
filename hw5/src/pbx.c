@@ -2,6 +2,9 @@
  * PBX: simulates a Private Branch Exchange.
  */
 #include <stdlib.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <sys/socket.h>
 
 #include "pbx.h"
 #include "debug.h"
@@ -12,9 +15,24 @@
  * @return the newly initialized PBX, or NULL if initialization fails.
  */
 #if 0
+typedef struct pbx
+{
+    pthread_mutex_t mutex;
+    int exts[PBX_MAX_EXTENSIONS];
+    TU tus[PBX_MAX_EXTENSIONS];
+} PBX;
+
 PBX *pbx_init() {
-    // TO BE IMPLEMENTED
-    abort();
+    PBX *pbx = malloc(sizeof(PBX));
+    if (!pbx)
+    {
+        debug("ERROR: Fail to alloc memeory for pbx")
+        return NULL;
+    }
+    // init pbx
+    memset(pbx, 0, sizeof(PBX));
+    pthread_mutex_init(&pbx->mutex, NULL);
+    return pbx;
 }
 #endif
 
@@ -30,8 +48,22 @@ PBX *pbx_init() {
  */
 #if 0
 void pbx_shutdown(PBX *pbx) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!pbx)
+    {
+        debug("ERROR: pbx does not extst");
+        return;
+    }
+    pthread_mutex_lock(&pbx->mutex);
+    for (size_t i = 0; i < PBX_MAX_EXTENSIONS; i++)
+    {
+        int socket = pbx->exts[i];
+        if (socket)
+            shutdown(socket, SHUT_RD);
+        pbx->exts[i] = 0;
+    }
+    pthread_mutex_unlock(&pbx->mutex);
+    pthread_mutex_destroy(&pbx->mutex);
+    free(pbx);
 }
 #endif
 
@@ -51,8 +83,30 @@ void pbx_shutdown(PBX *pbx) {
  */
 #if 0
 int pbx_register(PBX *pbx, TU *tu, int ext) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!pbx || !tu)
+    {
+        debug("ERROR: pbx or tu does not exist");
+        return -1;
+    }
+    
+    if (ext > PBX_MAX_EXTENSIONS + 1 || ext < 1)
+    {
+        debug("ERROR: ext is out of range");
+        return -1;
+    }
+    
+    pthread_mutex_lock(&pbx->mutex);
+    if (pbx->exts[ext-1] != 0)
+    {
+        debug("ERROR: ext already exist");
+        pthread_mutex_unlock(&pbx->mutex);
+        return -1;
+    }
+    tu_ref(tu, "Register tu to pbx");
+    tu_set_extension(tu, ext);
+    pbx->exts[ext-1] = ext;
+    pthread_mutex_unlock(&pbx->mutex);
+    return 0;
 }
 #endif
 
@@ -70,8 +124,29 @@ int pbx_register(PBX *pbx, TU *tu, int ext) {
  */
 #if 0
 int pbx_unregister(PBX *pbx, TU *tu) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!pbx || !tu)
+    {
+        debug("ERROR: pbx or tu does not exist");
+        return -1;
+    }
+    int ext = tu_extension(tu);
+    if (ext > PBX_MAX_EXTENSIONS + 1 || ext < 1)
+    {
+        debug("ERROR: ext is out of range");
+        return -1;
+    }
+    pthread_mutex_lock(&pbx->mutex);
+    if (pbx->exts[ext-1] == 0)
+    {
+        debug("ERROR: ext does not exist");
+        pthread_mutex_unlock(&pbx->mutex);
+        return -1;
+    }
+    tu_hangup(tu);
+    tu_unref(tu, "Unregister tu from pbx");
+    pbx->exts[ext-1] = 0;
+    pthread_mutex_unlock(&pbx->mutex);
+    return 0;
 }
 #endif
 
@@ -85,7 +160,19 @@ int pbx_unregister(PBX *pbx, TU *tu) {
  */
 #if 0
 int pbx_dial(PBX *pbx, TU *tu, int ext) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!pbx || !tu)
+    {
+        debug("ERROR: pbx or tu does not exist");
+        return -1;
+    }
+    if (ext > PBX_MAX_EXTENSIONS + 1 || ext < 1)
+    {
+        debug("ERROR: ext is out of range");
+        return -1;
+    }
+    pthread_mutex_lock(&pbx->mutex);
+    int status = tu_dial(tu, pbx->exts[ext-1]);
+    pthread_mutex_unlock(&pbx->mutex);
+    return status;
 }
 #endif

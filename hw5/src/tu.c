@@ -2,6 +2,8 @@
  * TU: simulates a "telephone unit", which interfaces a client with the PBX.
  */
 #include <stdlib.h>
+#include <pthread.h>
+#include <stdio.h>
 
 #include "pbx.h"
 #include "debug.h"
@@ -13,10 +15,42 @@
  * @return  The TU, newly initialized and in the TU_ON_HOOK state, if initialization
  * was successful, otherwise NULL.
  */
-#if 0
+#if 1
+typedef struct tu
+{
+    int fd;
+    FILE *f;
+    int ext;
+    int ref;
+    TU *chat_TU;
+    int chat_locked;
+    TU_STATE state;
+    pthread_mutex_t mutex;
+} TU;
+
+int tu_notify(TU *tu);
+int tu_lock(TU *tu);
+int tu_unlock(TU *tu);
+void tu_destroy(TU* tu);
+
 TU *tu_init(int fd) {
-    // TO BE IMPLEMENTED
-    abort();
+    TU *tu;
+
+    tu = malloc(sizeof(TU));
+    if ( !tu ) {
+        debug("ERROR: fail to alloc memory for tu");
+        return NULL;
+    }
+
+    tu->fd = fd;
+    tu->f = fdopen(fd, "w");
+    tu->ext = 0;
+    tu->ref = 1;
+    tu->chat_TU = NULL;
+    tu->chat_locked = 0;
+    tu->state = TU_ON_HOOK;
+    pthread_mutex_init(&tu->mutex, NULL);
+    return tu;
 }
 #endif
 
@@ -27,10 +61,17 @@ TU *tu_init(int fd) {
  * @param reason  A string describing the reason why the count is being incremented
  * (for debugging purposes).
  */
-#if 0
+#if 1
 void tu_ref(TU *tu, char *reason) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!tu)
+    {
+        debug("ERROR: tu does not exist");
+        return;
+    }
+    pthread_mutex_lock(&tu->mutex);
+    // debug(reason);
+    tu->ref ++;
+    pthread_mutex_unlock(&tu->mutex);
 }
 #endif
 
@@ -41,10 +82,20 @@ void tu_ref(TU *tu, char *reason) {
  * @param reason  A string describing the reason why the count is being decremented
  * (for debugging purposes).
  */
-#if 0
+#if 1
 void tu_unref(TU *tu, char *reason) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!tu)
+    {
+        debug("ERROR: tu does not exist");
+        return;
+    }
+    pthread_mutex_lock(&tu->mutex);
+    // debug(reason);
+    tu->ref --;
+    if (tu->ref <= 0)
+        tu_destroy(tu);
+    else
+        pthread_mutex_unlock(&tu->mutex);
 }
 #endif
 
@@ -57,10 +108,17 @@ void tu_unref(TU *tu, char *reason) {
  * @param tu
  * @return the underlying file descriptor, if any, otherwise -1.
  */
-#if 0
+#if 1
 int tu_fileno(TU *tu) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!tu)
+    {
+        debug("ERROR: tu does not exist");
+        return -1;
+    }
+    pthread_mutex_lock(&tu->mutex);
+    int fd = tu->fd;
+    pthread_mutex_unlock(&tu->mutex);
+    return fd;
 }
 #endif
 
@@ -74,10 +132,17 @@ int tu_fileno(TU *tu) {
  * @param tu
  * @return the extension number, if any, otherwise -1.
  */
-#if 0
+#if 1
 int tu_extension(TU *tu) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!tu)
+    {
+        debug("ERROR: tu does not exist");
+        return -1;
+    }
+    pthread_mutex_lock(&tu->mutex);
+    int ext = tu->ext;
+    pthread_mutex_unlock(&tu->mutex);
+    return ext;
 }
 #endif
 
@@ -88,10 +153,24 @@ int tu_extension(TU *tu) {
  *
  * @param tu  The TU whose extension is being set.
  */
-#if 0
+#if 1
 int tu_set_extension(TU *tu, int ext) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!tu)
+    {
+        debug("ERROR: tu does not exist");
+        return -1;
+    }
+    pthread_mutex_lock(&tu->mutex);
+    if (tu->ext)
+    {
+        debug("ERROR: extention has already been set");
+        pthread_mutex_unlock(&tu->mutex);
+        return -1;
+    }
+    tu->ext = ext;
+    int status = tu_notify(tu);
+    pthread_mutex_unlock(&tu->mutex);
+    return status;
 }
 #endif
 
@@ -125,10 +204,90 @@ int tu_set_extension(TU *tu, int ext) {
  * @return 0 if successful, -1 if any error occurs that results in the originating
  * TU transitioning to the TU_ERROR state. 
  */
-#if 0
+#if 1
 int tu_dial(TU *tu, TU *target) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!tu)
+    {
+        debug("ERROR: tu or target does not exist");
+        return -1;
+    }
+    pthread_mutex_lock(&tu->mutex);
+    if (tu->chat_TU)
+    {
+        debug("ERROR: Already in chat");
+        tu_notify(tu);
+        pthread_mutex_unlock(&tu->mutex);
+        return -1;
+    }
+    if (tu->state != TU_DIAL_TONE)
+    {
+        debug("ERROR: not in dial state");
+        tu_notify(tu);
+        pthread_mutex_unlock(&tu->mutex);
+        return -1;
+    }
+    if (target)
+    {
+        if (tu == target)
+        {
+            debug("ERROR: calling it self");
+            tu->state = TU_BUSY_SIGNAL;
+            int status = tu_notify(tu);
+            pthread_mutex_unlock(&tu->mutex);
+            return status;
+        }
+        if (tu->ext < target->ext)
+        {
+            pthread_mutex_unlock(&tu->mutex);
+            pthread_mutex_lock(&tu->mutex);
+            pthread_mutex_lock(&target->mutex);
+        }
+        else {
+            pthread_mutex_unlock(&tu->mutex);
+            pthread_mutex_lock(&target->mutex);
+            pthread_mutex_lock(&tu->mutex);
+        }
+        if (target->chat_TU)
+        {
+            debug("ERROR: target is already in chat");
+            tu->state = TU_BUSY_SIGNAL;
+            int status = tu_notify(tu);
+            pthread_mutex_unlock(&tu->mutex);
+            pthread_mutex_unlock(&target->mutex);
+            return status;
+        }
+        if (target->state != TU_ON_HOOK)
+        {
+            debug("ERROR: target not in on hook state");
+            tu->state = TU_BUSY_SIGNAL;
+            int status = tu_notify(tu);
+            pthread_mutex_unlock(&tu->mutex);
+            pthread_mutex_unlock(&target->mutex);
+            return status;
+        }
+        debug("dialing");
+        tu->ref++;
+        target->ref++;
+        tu->chat_TU = target;
+        target->chat_TU = tu;
+        tu->state = TU_RING_BACK;
+        target->state = TU_RINGING;
+        int status = 0;
+        if (tu_notify(tu))
+            status = -1;
+        if (tu_notify(target))
+            status = -1;
+        pthread_mutex_unlock(&tu->mutex);
+        pthread_mutex_unlock(&target->mutex);
+        return status;
+    }
+    else {
+        debug("ERROR: cannot find target");
+        tu->state = TU_ERROR;
+        int status = tu_notify(tu);
+        pthread_mutex_unlock(&tu->mutex);
+        return status;
+    }
 }
 #endif
 
@@ -149,10 +308,54 @@ int tu_dial(TU *tu, TU *target) {
  * @return 0 if successful, -1 if any error occurs that results in the originating
  * TU transitioning to the TU_ERROR state. 
  */
-#if 0
+#if 1
 int tu_pickup(TU *tu) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!tu)
+    {
+        debug("ERROR: tu or target does not exist");
+        return -1;
+    }
+    tu_lock(tu);
+    if (tu->state == TU_ON_HOOK)
+    {
+        debug("TU is on hook");
+        tu->state = TU_DIAL_TONE;
+        int status = tu_notify(tu);
+        tu_unlock(tu);
+        return status;
+    }
+    if (tu->state == TU_RINGING)
+    {
+        if (tu->chat_TU)
+        {
+            if (tu->chat_TU->state == TU_RING_BACK && tu == tu->chat_TU->chat_TU)
+            {
+                debug("connecting");
+                tu->state = TU_CONNECTED;
+                tu->chat_TU->state = TU_CONNECTED;
+                int status = 0;
+                if (tu_notify(tu))
+                    status = -1;
+                if (tu_notify(tu->chat_TU))
+                    status = -1;
+                tu_unlock(tu);
+                return status;
+            }
+            debug("ERROR: ringing and has chat_TU but chat_TU is not in ring back or tu's chat_TU's chat_TU is not tu");
+            tu_notify(tu);
+            tu_unlock(tu);
+            return -1;
+        }
+        else {
+            debug("ERROR: ringing but no chat_TU");
+            tu_unlock(tu);
+            return -1;
+        }
+    }
+    debug("already picked up");
+    tu_notify(tu);
+    tu_unlock(tu);
+    return -1;
 }
 #endif
 
@@ -177,10 +380,107 @@ int tu_pickup(TU *tu) {
  * @return 0 if successful, -1 if any error occurs that results in the originating
  * TU transitioning to the TU_ERROR state. 
  */
-#if 0
+#if 1
 int tu_hangup(TU *tu) {
-    // TO BE IMPLEMENTED
-    abort();
+    if (!tu)
+    {
+        debug("ERROR: tu or target does not exist");
+        return -1;
+    }
+    tu_lock(tu);
+
+    if (tu->state == TU_ON_HOOK)
+    {
+        debug("already on hook");
+        int status = tu_notify(tu);
+        tu_unlock(tu);
+        return status;
+    }
+    if (tu->state == TU_CONNECTED || tu->state == TU_RINGING)
+    {
+        if (tu->chat_TU)
+        {
+            debug("disconnecting peer");
+            tu->state = TU_ON_HOOK;
+            tu->chat_TU->state = TU_DIAL_TONE;
+            int status = 0;
+            if (tu_notify(tu))
+                status = -1;
+            if (tu_notify(tu->chat_TU))
+                status = -1;
+            
+            tu->chat_TU->chat_TU = NULL;
+            tu->chat_TU->ref --;
+            if (tu->chat_TU->ref <= 0)
+                tu_destroy(tu->chat_TU);
+            else
+                pthread_mutex_unlock(&tu->chat_TU->mutex);
+            
+            tu->chat_TU = NULL;
+            tu->ref --;
+            tu->chat_locked = 0;
+            if (tu->ref <= 0)
+                tu_destroy(tu);
+            else
+                pthread_mutex_unlock(&tu->mutex);
+            return status;
+        }
+        else {
+            debug("ERROR: connecting or ringing but no peer");
+            tu->state = TU_ON_HOOK;
+            tu_notify(tu);
+            tu_unlock(tu);
+            return -1;
+        }
+    }
+    if (tu->state == TU_RING_BACK)
+    {
+        if (tu->chat_TU)
+        {
+            debug("disconnecting peer");
+            tu->state = TU_ON_HOOK;
+            tu->chat_TU->state = TU_ON_HOOK;
+            int status = 0;
+            if (tu_notify(tu))
+                status = -1;
+            if (tu_notify(tu->chat_TU))
+                status = -1;
+
+            tu->chat_TU->chat_TU = NULL;
+            tu->chat_TU->ref --;
+            if (tu->chat_TU->ref <= 0)
+                tu_destroy(tu->chat_TU);
+            else
+                pthread_mutex_unlock(&tu->chat_TU->mutex);
+            
+            tu->chat_TU = NULL;
+            tu->ref --;
+            tu->chat_locked = 0;
+            if (tu->ref <= 0)
+                tu_destroy(tu);
+            else
+                pthread_mutex_unlock(&tu->mutex);
+            return status;
+        }
+        else {
+            debug("ERROR: ringing back but no peer");
+            tu->state = TU_ON_HOOK;
+            tu_notify(tu);
+            tu_unlock(tu);
+            return -1;
+        }
+    }
+    if (tu->chat_TU) {
+        debug("ERROR: no chat_TU in these states");
+        tu->state = TU_ON_HOOK;
+        tu_notify(tu);
+        tu_unlock(tu);
+        return -1;
+    }
+    tu->state = TU_ON_HOOK;
+    int status = tu_notify(tu);
+    tu_unlock(tu);
+    return status;
 }
 #endif
 
@@ -197,9 +497,120 @@ int tu_hangup(TU *tu) {
  * @return 0  If the chat was successfully sent, -1 if there is no call in progress
  * or some other error occurs.
  */
-#if 0
+#if 1
 int tu_chat(TU *tu, char *msg) {
-    // TO BE IMPLEMENTED
-    abort();
+    pthread_mutex_lock(&tu->mutex);
+    if (tu->state == TU_CONNECTED)
+    {
+        TU *target = tu->chat_TU;
+        if (target)
+        {
+            if (tu->ext < target->ext)
+            {
+                pthread_mutex_unlock(&tu->mutex);
+                pthread_mutex_lock(&tu->mutex);
+                pthread_mutex_lock(&target->mutex);
+            }
+            else {
+                pthread_mutex_unlock(&tu->mutex);
+                pthread_mutex_lock(&target->mutex);
+                pthread_mutex_lock(&tu->mutex);
+            }
+            if (tu->chat_TU == target && target->chat_TU == tu 
+                && tu->state == TU_CONNECTED && target->state == TU_CONNECTED)
+            {
+                debug("sending msg");
+                int status = 0;
+                if (fprintf(target->f, "CHAT %s\r\n", msg) < 0 && fflush(target->f) < 0)
+                    status = -1;
+                if (tu_notify(tu) < 0)
+                    status = -1;
+                pthread_mutex_unlock(&target->mutex);
+                pthread_mutex_unlock(&tu->mutex);
+                return status;
+            }
+            else
+            {
+                debug("ERROR: target changed or chat_TU do not match");
+                tu_notify(tu);
+                pthread_mutex_unlock(&target->mutex);
+                pthread_mutex_unlock(&tu->mutex);
+                return -1;
+            }  
+        }
+        else {
+            debug("ERROR: connected but no chat_TU");
+            tu_notify(tu);
+            pthread_mutex_unlock(&tu->mutex);
+            return -1;
+        }
+    }
+    else {
+        debug("ERROR: not in connected state");
+        tu_notify(tu);
+        pthread_mutex_unlock(&tu->mutex);
+        return -1;
+    }
 }
 #endif
+
+int tu_notify(TU *tu) {
+    int status = 0;
+
+    if (fputs(tu_state_names[tu->state], tu->f) < 0)
+        status = -1;
+    if (tu->state == TU_ON_HOOK)
+        if (fprintf(tu->f, " %d", tu->fd) < 0)
+            status = -1;
+    if (tu->state == TU_CONNECTED)
+        if (fprintf(tu->f, " %d", tu->chat_TU->fd) < 0)
+            status = -1;
+    if (fprintf(tu->f, "\r\n") < 0 || fflush(tu->f) < 0)
+        status = -1;
+    if (status == -1)
+        debug("ERROR: fail to print message to client");
+    return status;
+}
+
+int tu_lock(TU *tu) {
+    while (1) {
+        pthread_mutex_lock(&tu->mutex);
+        TU *tmp = tu->chat_TU;
+        if (!tu->chat_TU)
+            return 0;
+        if (tu->ext < tmp->ext)
+        {
+            pthread_mutex_unlock(&tu->mutex);
+            pthread_mutex_lock(&tu->mutex);
+            pthread_mutex_lock(&tmp->mutex);
+            tu->chat_locked = 1;
+        }
+        else {
+            pthread_mutex_unlock(&tu->mutex);
+            pthread_mutex_lock(&tmp->mutex);
+            pthread_mutex_lock(&tu->mutex);
+            tu->chat_locked = 1;
+        }
+        if (tu->chat_TU == tmp)
+            return 0;
+        
+        pthread_mutex_unlock(&tmp->mutex);
+        pthread_mutex_unlock(&tu->mutex);
+    }
+}
+
+int tu_unlock(TU *tu) {
+    if (tu->chat_locked)
+    {
+        pthread_mutex_unlock(&tu->chat_TU->mutex);
+        tu->chat_locked = 0;
+    }
+    pthread_mutex_unlock(&tu->mutex);
+    return 0;
+}
+
+void tu_destroy(TU* tu) {
+    pthread_mutex_unlock(&tu->mutex);
+    pthread_mutex_destroy(&tu->mutex);
+    free(tu);
+}
