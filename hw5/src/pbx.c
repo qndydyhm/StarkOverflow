@@ -14,23 +14,26 @@
  *
  * @return the newly initialized PBX, or NULL if initialization fails.
  */
-#if 0
+#if 1
 typedef struct pbx
 {
     pthread_mutex_t mutex;
-    int exts[PBX_MAX_EXTENSIONS];
-    TU tus[PBX_MAX_EXTENSIONS];
+    TU *tus[PBX_MAX_EXTENSIONS];
 } PBX;
+
+void pbx_unregister_helper(TU *tu);
 
 PBX *pbx_init() {
     PBX *pbx = malloc(sizeof(PBX));
     if (!pbx)
     {
-        debug("ERROR: Fail to alloc memeory for pbx")
+        debug("ERROR: Fail to alloc memeory for pbx");
         return NULL;
     }
     // init pbx
-    memset(pbx, 0, sizeof(PBX));
+    for (size_t i = 0; i < PBX_MAX_EXTENSIONS; i++)
+        pbx->tus[i] = NULL;
+    
     pthread_mutex_init(&pbx->mutex, NULL);
     return pbx;
 }
@@ -46,7 +49,7 @@ PBX *pbx_init() {
  *
  * @param pbx  The PBX to be shut down.
  */
-#if 0
+#if 1
 void pbx_shutdown(PBX *pbx) {
     if (!pbx)
     {
@@ -56,10 +59,11 @@ void pbx_shutdown(PBX *pbx) {
     pthread_mutex_lock(&pbx->mutex);
     for (size_t i = 0; i < PBX_MAX_EXTENSIONS; i++)
     {
-        int socket = pbx->exts[i];
-        if (socket)
-            shutdown(socket, SHUT_RD);
-        pbx->exts[i] = 0;
+        if (pbx->tus[i])
+        {
+            pbx_unregister_helper(pbx->tus[i]);
+            pbx->tus[i] = NULL;
+        }
     }
     pthread_mutex_unlock(&pbx->mutex);
     pthread_mutex_destroy(&pbx->mutex);
@@ -81,7 +85,7 @@ void pbx_shutdown(PBX *pbx) {
  * @param ext  The extension number on which the TU is to be registered.
  * @return 0 if registration succeeds, otherwise -1.
  */
-#if 0
+#if 1
 int pbx_register(PBX *pbx, TU *tu, int ext) {
     if (!pbx || !tu)
     {
@@ -96,7 +100,7 @@ int pbx_register(PBX *pbx, TU *tu, int ext) {
     }
     
     pthread_mutex_lock(&pbx->mutex);
-    if (pbx->exts[ext-1] != 0)
+    if (pbx->tus[ext])
     {
         debug("ERROR: ext already exist");
         pthread_mutex_unlock(&pbx->mutex);
@@ -104,7 +108,7 @@ int pbx_register(PBX *pbx, TU *tu, int ext) {
     }
     tu_ref(tu, "Register tu to pbx");
     tu_set_extension(tu, ext);
-    pbx->exts[ext-1] = ext;
+    pbx->tus[ext] = tu;
     pthread_mutex_unlock(&pbx->mutex);
     return 0;
 }
@@ -122,7 +126,7 @@ int pbx_register(PBX *pbx, TU *tu, int ext) {
  * @param tu  The TU to be unregistered.
  * @return 0 if unregistration succeeds, otherwise -1.
  */
-#if 0
+#if 1
 int pbx_unregister(PBX *pbx, TU *tu) {
     if (!pbx || !tu)
     {
@@ -136,19 +140,24 @@ int pbx_unregister(PBX *pbx, TU *tu) {
         return -1;
     }
     pthread_mutex_lock(&pbx->mutex);
-    if (pbx->exts[ext-1] == 0)
+    if (!pbx->tus[ext])
     {
         debug("ERROR: ext does not exist");
         pthread_mutex_unlock(&pbx->mutex);
         return -1;
     }
-    tu_hangup(tu);
-    tu_unref(tu, "Unregister tu from pbx");
-    pbx->exts[ext-1] = 0;
+    pbx_unregister_helper(tu);
+    pbx->tus[ext] = NULL;
     pthread_mutex_unlock(&pbx->mutex);
     return 0;
 }
 #endif
+
+void pbx_unregister_helper(TU *tu) {
+    tu_hangup(tu);
+    shutdown(tu_fileno(tu), SHUT_RD);
+    tu_unref(tu, "Unregister tu from pbx");
+}
 
 /*
  * Use the PBX to initiate a call from a specified TU to a specified extension.
@@ -158,20 +167,20 @@ int pbx_unregister(PBX *pbx, TU *tu) {
  * @param ext  The extension number to be called.
  * @return 0 if dialing succeeds, otherwise -1.
  */
-#if 0
+#if 1
 int pbx_dial(PBX *pbx, TU *tu, int ext) {
     if (!pbx || !tu)
     {
         debug("ERROR: pbx or tu does not exist");
         return -1;
     }
-    if (ext > PBX_MAX_EXTENSIONS + 1 || ext < 1)
+    if (ext > PBX_MAX_EXTENSIONS || ext < 0)
     {
         debug("ERROR: ext is out of range");
         return -1;
     }
     pthread_mutex_lock(&pbx->mutex);
-    int status = tu_dial(tu, pbx->exts[ext-1]);
+    int status = tu_dial(tu, pbx->tus[ext]);
     pthread_mutex_unlock(&pbx->mutex);
     return status;
 }
