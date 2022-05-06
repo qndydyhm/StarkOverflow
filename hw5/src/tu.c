@@ -92,7 +92,7 @@ void tu_unref(TU *tu, char *reason) {
     pthread_mutex_lock(&tu->mutex);
     // debug(reason);
     tu->ref --;
-    if (tu->ref <= 0)
+    if (tu->ref == 0)
         tu_destroy(tu);
     else
         pthread_mutex_unlock(&tu->mutex);
@@ -419,7 +419,7 @@ int tu_hangup(TU *tu) {
             tu->chat_TU = NULL;
             tu->ref --;
             tu->chat_locked = 0;
-            if (tu->ref <= 0)
+            if (tu->ref == 0)
                 tu_destroy(tu);
             else
                 pthread_mutex_unlock(&tu->mutex);
@@ -456,7 +456,7 @@ int tu_hangup(TU *tu) {
             tu->chat_TU = NULL;
             tu->ref --;
             tu->chat_locked = 0;
-            if (tu->ref <= 0)
+            if (tu->ref == 0)
                 tu_destroy(tu);
             else
                 pthread_mutex_unlock(&tu->mutex);
