@@ -9,8 +9,8 @@ before_script:
     - make clean all -C ${HW_DIR}
 stages:
     - build
-    - run
     - test
+    - run
 build:
     stage: build
     script:
