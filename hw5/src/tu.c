@@ -521,7 +521,7 @@ int tu_chat(TU *tu, char *msg) {
             {
                 debug("sending msg");
                 int status = 0;
-                if (fprintf(target->f, "CHAT %s\r\n", msg) < 0 && fflush(target->f) < 0)
+                if (fprintf(target->f, "CHAT %s\r\n", msg) < 0 || fflush(target->f) < 0)
                     status = -1;
                 if (tu_notify(tu) < 0)
                     status = -1;
